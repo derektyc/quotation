@@ -115,7 +115,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
     <h1>Insurance Quotation Hub</h1>
     <p>Enter the password to access the quotation workspace.</p>
     <label for="authPassword">Password</label>
-    <input id="authPassword" type="password" inputmode="numeric" autocomplete="current-password" aria-describedby="authError" autofocus>
+    <input id="authPassword" name="quotation-access-code" type="password" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" value="" aria-describedby="authError" autofocus>
     <button id="authSubmit" type="submit">Enter</button>
     <div id="authError" class="auth-error" role="alert" aria-live="polite"></div>
   </form>
@@ -286,7 +286,6 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 </div>
 <script>
 // ----- Password gate -----
-const AUTH_SESSION_KEY='insuranceQuotationHubUnlockedV1';
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
 const authGate=document.getElementById('authGate');
 const protectedApp=document.getElementById('protectedApp');
@@ -295,11 +294,53 @@ const authPassword=document.getElementById('authPassword');
 const authError=document.getElementById('authError');
 const lockApp=document.getElementById('lockApp');
 
+function sha256Fallback(ascii){
+  function rightRotate(value,amount){return (value>>>amount)|(value<<(32-amount))}
+  const maxWord=Math.pow(2,32),words=[],asciiBitLength=ascii.length*8;
+  let hash=sha256Fallback.h=sha256Fallback.h||[],k=sha256Fallback.k=sha256Fallback.k||[],primeCounter=k.length;
+  const isComposite={};
+  for(let candidate=2;primeCounter<64;candidate++){
+    if(!isComposite[candidate]){
+      for(let i=0;i<313;i+=candidate)isComposite[i]=candidate;
+      hash[primeCounter]=(Math.pow(candidate,.5)*maxWord)|0;
+      k[primeCounter++]=(Math.pow(candidate,1/3)*maxWord)|0;
+    }
+  }
+  ascii+='\x80';
+  while(ascii.length%64-56)ascii+='\x00';
+  for(let i=0;i<ascii.length;i++){
+    const j=ascii.charCodeAt(i);
+    if(j>>8)return '';
+    words[i>>2]|=j<<((3-i)%4)*8;
+  }
+  words[words.length]=((asciiBitLength/maxWord)|0);
+  words[words.length]=asciiBitLength;
+  for(let j=0;j<words.length;){
+    const w=words.slice(j,j+=16),oldHash=hash.slice(0);
+    hash=hash.slice(0,8);
+    for(let i=0;i<64;i++){
+      const w15=w[i-15],w2=w[i-2],a=hash[0],e=hash[4];
+      const temp1=hash[7]+(rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]+(w[i]=(i<16)?w[i]:((w[i-16]+(rightRotate(w15,7)^rightRotate(w15,18)^(w15>>>3))+w[i-7]+(rightRotate(w2,17)^rightRotate(w2,19)^(w2>>>10)))|0));
+      const temp2=(rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+      hash=[(temp1+temp2)|0].concat(hash);
+      hash[4]=(hash[4]+temp1)|0;
+      hash.pop();
+    }
+    for(let i=0;i<8;i++)hash[i]=(hash[i]+oldHash[i])|0;
+  }
+  let result='';
+  for(let i=0;i<8;i++)for(let j=3;j+1;j--){const b=(hash[i]>>(j*8))&255;result+=((b<16)?'0':'')+b.toString(16)}
+  return result;
+}
 async function sha256Hex(value){
-  if(!window.crypto?.subtle)throw new Error('Secure password checking is unavailable in this browser.');
-  const bytes=new TextEncoder().encode(value);
-  const digest=await crypto.subtle.digest('SHA-256',bytes);
-  return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+  try{
+    if(window.crypto?.subtle&&window.TextEncoder){
+      const bytes=new TextEncoder().encode(value);
+      const digest=await crypto.subtle.digest('SHA-256',bytes);
+      return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(_){}
+  return sha256Fallback(value);
 }
 function showProtectedApp(){
   authGate.hidden=true;
@@ -313,8 +354,8 @@ function showPasswordGate(){
   authError.textContent='';
   setTimeout(()=>authPassword.focus(),0);
 }
-if(sessionStorage.getItem(AUTH_SESSION_KEY)==='1')showProtectedApp();
-else showPasswordGate();
+showPasswordGate();
+window.addEventListener('pageshow',()=>{if(!authGate.hidden){authPassword.value='';authPassword.setAttribute('value','')}});
 
 authForm.addEventListener('submit',async e=>{
   e.preventDefault();
@@ -325,7 +366,7 @@ authForm.addEventListener('submit',async e=>{
   try{
     const hash=await sha256Hex(entered);
     if(hash===AUTH_PASSWORD_SHA256){
-      sessionStorage.setItem(AUTH_SESSION_KEY,'1');
+      authPassword.value='';
       showProtectedApp();
     }else{
       authError.textContent='Incorrect password.';
@@ -334,7 +375,7 @@ authForm.addEventListener('submit',async e=>{
   }catch(err){authError.textContent=err.message||'Unable to verify password.'}
   finally{btn.disabled=false;btn.textContent='Enter'}
 });
-lockApp.addEventListener('click',()=>{sessionStorage.removeItem(AUTH_SESSION_KEY);showPasswordGate()});
+lockApp.addEventListener('click',showPasswordGate);
 
 const $=id=>document.getElementById(id);
 const money=n=>Number.isFinite(n)?new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD',maximumFractionDigits:0}).format(n):'—';
