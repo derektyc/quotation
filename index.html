@@ -106,6 +106,9 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .auth-lock:hover{background:rgba(255,255,255,.15)}
 @media(max-width:560px){.auth-card{padding:22px}.auth-header-inner{align-items:flex-start}.auth-lock{padding:9px 11px}}
 
+
+/* Investment comparison workspace */
+.compare-tabs{display:flex;gap:9px;margin-top:18px}.compare-tabs button.active{background:#132333;color:white;border-color:#132333}.comparison-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.compare-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.compare-result{overflow:auto}.compare-result table{min-width:760px}.compare-chart{width:100%;height:300px}.compare-help{font-size:12px;color:var(--muted);line-height:1.6}.compare-product-box{background:#faf7f0;padding:15px;border:1px solid #e4dccd;border-radius:13px}@media(max-width:750px){.comparison-fields,.compare-settings{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -129,7 +132,26 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
     <div><label>Product</label><select id="product"></select></div>
   </section>
 
-  <div id="investmentView" class="section-view">
+  
+<div id="investmentCompareTabs" class="compare-tabs hidden"><button type="button" id="singleQuoteTab" class="active">Single Quotation</button><button type="button" id="comparePlansTab">Compare Plans</button></div>
+<section id="comparisonView" class="section-view hidden">
+  <div class="card"><h2>Compare Investment Plans</h2><p class="compare-help">Compare two investment products using shared client age, assumed net ROI, dividend rate, withdrawal age and surrender age. Annual premiums and plan terms can differ. Figures are illustrative and are not official benefit illustrations.</p>
+    <div class="compare-settings">
+      <div><label>Client Age</label><input id="compareAge" type="number" min="0" max="99" value="40"></div>
+      <div><label>ROI p.a. (%)</label><input id="compareRoi" type="number" step="0.1" value="8"></div>
+      <div><label>Dividend p.a. (%)</label><input id="compareDividend" type="number" step="0.1" value="6"></div>
+      <div><label>Withdrawal Age (0 = none)</label><input id="compareWithdraw" type="number" value="65"></div>
+      <div><label>Surrender / Comparison Age</label><input id="compareSurrender" type="number" value="75"></div>
+      <div><label>Gender (AIA benefit charge)</label><select id="compareGender"><option value="male">Male</option><option value="female">Female</option></select></div>
+    </div>
+  </div>
+  <div class="comparison-fields" style="margin-top:18px">
+    <div class="compare-product-box"><h2>Product A</h2><label>Product / Plan</label><select id="compareAProduct"></select><label style="margin-top:12px">Premium Term / Plan Option</label><select id="compareAOption"></select><label style="margin-top:12px">Annual Premium (SGD)</label><input id="compareAPremium" type="number" value="30000" step="100"><small class="hint">For SRS single premium enter the one-time total amount.</small></div>
+    <div class="compare-product-box"><h2>Product B</h2><label>Product / Plan</label><select id="compareBProduct"></select><label style="margin-top:12px">Premium Term / Plan Option</label><select id="compareBOption"></select><label style="margin-top:12px">Annual Premium (SGD)</label><input id="compareBPremium" type="number" value="30000" step="100"><small class="hint">Manulife plan options use their default premium terms.</small></div>
+  </div>
+  <div class="card" style="margin-top:18px"><div class="toolbar"><h2 style="margin:0">Projection Comparison</h2><button id="runComparison" type="button">Calculate Comparison</button></div><div id="compareError" class="error"></div><div id="compareSummary" class="compare-result"></div><div class="compare-chart"><svg id="compareChart" viewBox="0 0 750 300" preserveAspectRatio="none"></svg></div><div class="compare-result" id="compareTable"></div><p class="compare-help">Projected values are based on existing quotation engines. AIA surrender figures reflect the modelled surrender charge; Manulife uses modelled policy value, subject to product conditions. Dividends are annual estimates divided by 12 for monthly equivalents. Investment performance and dividends are not guaranteed.</p></div>
+</section>
+<div id="investmentView" class="section-view">
     <section class="grid">
       <div class="card"><h2>Premium & Client Details</h2><div class="field-grid"><div style="grid-column:1/-1"><label id="investmentPlanLabel">InvestReady Plan</label><select id="investmentPlan"></select><small class="hint" id="investmentPlanHint"></small></div>
         <div><label>Premium Term (years)</label><input id="term" type="number" step="1"></div>
@@ -606,6 +628,90 @@ if(!restoreHubState()){
   $('hospEffectiveDate').value=todayIso;
   saveHubState();
 }
+
+/* Comparison tab - runs the same calculation routines as individual quotations. */
+let investmentCompareActive=false;
+const comparisonProducts=[
+  ['AIA|Platinum Wealth Venture 3.0','AIA · Platinum Wealth Venture 3.0'],
+  ['AIA|Pro Achiever 3.0','AIA · Pro Achiever 3.0'],
+  ['AIA|Wealth Venture','AIA · Wealth Venture'],
+  ['Manulife|InvestReady','Manulife · InvestReady']
+];
+function compareOptionList(side){
+  const [ins,product]=$('compare'+side+'Product').value.split('|'),select=$('compare'+side+'Option');
+  const options=ins==='Manulife'?Object.keys(PLANS):AIA_PRODUCTS[product].options;
+  const old=select.value;select.innerHTML=options.map(v=>'<option>'+v+'</option>').join('');
+  if(options.includes(old))select.value=old;
+}
+function compareTab(show){
+  investmentCompareActive=show;
+  $('investmentView').classList.toggle('hidden',show||$('category').value!=='investment');
+  $('comparisonView').classList.toggle('hidden',!show||$('category').value!=='investment');
+  $('singleQuoteTab').classList.toggle('active',!show);$('comparePlansTab').classList.toggle('active',show);
+  if(show)runPlanComparison();
+}
+function compareMoney(v){return Number.isFinite(v)?money2(v):'—'}
+function capturePlanComparison(side){
+  const [ins,product]=$('compare'+side+'Product').value.split('|');
+  const option=$('compare'+side+'Option').value, premium=Number($('compare'+side+'Premium').value);
+  const age=Number($('compareAge').value),roi=Number($('compareRoi').value),div=Number($('compareDividend').value),withdraw=Number($('compareWithdraw').value),surrender=Number($('compareSurrender').value);
+  const plan=ins==='Manulife'?PLANS[option]:null;
+  const term=plan?plan.defaults.term:product==='Platinum Wealth Venture 3.0'?(option.startsWith('Single')?1:option.startsWith('2-')?2:5):product==='Pro Achiever 3.0'?Number(option.match(/\d+/)[0])+1:8;
+  const min=plan?plan.minPremium:product==='Platinum Wealth Venture 3.0'?(term===1&&option.startsWith('Single')?15000:term===2?48000:18000):AIA_PRODUCTS[product].minAnnual;
+  if(!Number.isFinite(premium)||premium<min)throw Error(side+': Minimum premium for '+option+' is '+money(min)+'.');
+  if(plan&&surrender-age<plan.minSurrenderYear)throw Error(side+': '+option+' requires a minimum surrender period of '+plan.minSurrenderYear+' years.');
+  const fields=['term','premium','age','roi','dividend','withdrawAge','surrenderAge','mode','aiaGender'];
+  fields.forEach(id=>{const el=$(id); if(!el)throw Error('Missing quotation field '+id)});
+  $('term').value=term;$('premium').value=premium;$('age').value=age;$('roi').value=roi;$('dividend').value=div;
+  $('withdrawAge').value=withdraw;$('surrenderAge').value=surrender;$('mode').value='Annually';$('aiaGender').value=$('compareGender').value;
+  $('insurer').value=ins; // sets the actual category's insurer where available
+  $('product').innerHTML='<option>'+product+'</option>';$('product').value=product;
+  $('investmentPlan').innerHTML='<option>'+option+'</option>';$('investmentPlan').value=option;
+  if(plan)currentPlan=option;
+  let rows=null;const orig=renderInvestmentTable;
+  renderInvestmentTable=function(r){rows=r.map(x=>({...x}))};
+  try{if(plan)_calculateManulifeInvestment();else calculateAIAInvestment();}
+  finally{renderInvestmentTable=orig;}
+  if(!rows)throw Error('No projection rows for '+product);
+  const sr=rows.find(r=>r.age===surrender);if(!sr)throw Error(side+': Surrender age is outside projected ages.');
+  const dividends=rows.filter(r=>r.age<=surrender).reduce((sum,r)=>sum+r.annualDividend,0);
+  const paid=rows.filter(r=>r.age<=surrender).reduce((sum,r)=>sum+r.premium,0);
+  return {name:ins+' · '+(plan?option:product+' · '+option),rows,paid,dividends,gross:sr.policyValue,net:sr.netSurrender??sr.policyValue,total:dividends+(sr.netSurrender??sr.policyValue)};
+}
+function runPlanComparison(){
+  if(!investmentCompareActive||$('category').value!=='investment')return;
+  const error=$('compareError');error.textContent='';$('compareSummary').innerHTML='';$('compareTable').innerHTML='';$('compareChart').innerHTML='';
+  const age=Number($('compareAge').value),end=Number($('compareSurrender').value),withdraw=Number($('compareWithdraw').value);
+  if(!Number.isInteger(age)||age<0||age>=100||!Number.isInteger(end)||end<=age||end>100||!Number.isInteger(withdraw)||withdraw<0||(withdraw>0&&(withdraw<age||withdraw>end))){error.textContent='Please check ages: surrender age must be greater than current age and at most 100; withdrawal age must be 0 or between current and surrender ages.';return}
+  const fields=['insurer','product','investmentPlan','term','premium','mode','age','roi','dividend','withdrawAge','surrenderAge','aiaGender'];
+  const backup=Object.fromEntries(fields.map(id=>[id,{value:$(id).value,html:['product','investmentPlan'].includes(id)?$(id).innerHTML:null}]));
+  const originalPlan=currentPlan;let a,b;
+  try{a=capturePlanComparison('A');b=capturePlanComparison('B')}
+  catch(e){error.textContent=e.message;return}
+  finally{
+    for(const id of fields){if(backup[id].html!==null)$(id).innerHTML=backup[id].html;$(id).value=backup[id].value}
+    currentPlan=originalPlan;calculateInvestment();
+  }
+  const metrics=[['Total premiums paid','paid'],['Total dividends to age '+end,'dividends'],['Gross policy value','gross'],['Estimated net surrender value','net'],['Dividends + net surrender value','total']];
+  $('compareSummary').innerHTML='<table class="compare-table"><thead><tr><th>Metric</th><th>'+a.name+'</th><th>'+b.name+'</th></tr></thead><tbody>'+metrics.map(([label,key])=>'<tr><td>'+label+'</td><td>'+compareMoney(a[key])+'</td><td>'+compareMoney(b[key])+'</td></tr>').join('')+'</tbody></table>';
+  let years=[];for(let y=age+1;y<=end;y++){const ar=a.rows.find(r=>r.age===y),br=b.rows.find(r=>r.age===y);if(ar&&br)years.push({age:y,a:ar,b:br})}
+  $('compareTable').innerHTML='<h2>Year-by-Year Comparison</h2><div class="table-scroll"><table><thead><tr><th>Age</th><th>A: Premium</th><th>B: Premium</th><th>A: Monthly Dividend</th><th>B: Monthly Dividend</th><th>A: Net Value</th><th>B: Net Value</th></tr></thead><tbody>'+years.map(v=>'<tr'+(v.age===end?' class="highlight"':'')+'><td>'+v.age+'</td><td>'+compareMoney(v.a.premium)+'</td><td>'+compareMoney(v.b.premium)+'</td><td>'+compareMoney(v.a.monthlyDividend)+'</td><td>'+compareMoney(v.b.monthlyDividend)+'</td><td>'+compareMoney(v.a.netSurrender??v.a.policyValue)+'</td><td>'+compareMoney(v.b.netSurrender??v.b.policyValue)+'</td></tr>').join('')+'</tbody></table></div>';
+  const svg=$('compareChart'),W=750,H=300,left=70,right=22,top=22,bottom=40,max=Math.max(1,...years.flatMap(v=>[v.a.netSurrender??v.a.policyValue,v.b.netSurrender??v.b.policyValue]));
+  const x=i=>left+(years.length===1?0:i/(years.length-1))*(W-left-right);
+  const y=v=>H-bottom-Math.max(0,v)/max*(H-top-bottom);
+  const line=(key,color)=>'<polyline fill="none" stroke="'+color+'" stroke-width="3" vector-effect="non-scaling-stroke" points="'+years.map((v,i)=>x(i)+','+y(v[key].netSurrender??v[key].policyValue)).join(' ')+'"/>';
+  const grids=Array.from({length:5},(_,i)=>{const yy=top+i*(H-top-bottom)/4;return '<line x1="'+left+'" y1="'+yy+'" x2="'+(W-right)+'" y2="'+yy+'" stroke="#e4e7ec"/><text x="'+(left-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11" fill="#667085">'+compact(max*(1-i/4))+'</text>'}).join('');
+  svg.innerHTML=years.length?grids+line('a','#bc9959')+line('b','#287b76')+'<text x="'+left+'" y="'+(H-10)+'" font-size="11">Age '+years[0].age+'</text><text x="'+(W-right)+'" y="'+(H-10)+'" text-anchor="end" font-size="11">Age '+end+'</text><text x="'+(left+6)+'" y="15" font-size="11" fill="#bc9959">■ Product A</text><text x="'+(left+115)+'" y="15" font-size="11" fill="#287b76">■ Product B</text>':'';
+}
+for(const side of ['A','B']){$('compare'+side+'Product').innerHTML=comparisonProducts.map(([value,label])=>'<option value="'+value+'">'+label+'</option>').join('')}
+$('compareAProduct').value='AIA|Platinum Wealth Venture 3.0';$('compareBProduct').value='Manulife|InvestReady';
+for(const side of ['A','B']){$('compare'+side+'Product').addEventListener('change',()=>{compareOptionList(side);runPlanComparison()});$('compare'+side+'Option').addEventListener('change',runPlanComparison);$('compare'+side+'Premium').addEventListener('input',runPlanComparison);compareOptionList(side)}
+['compareAge','compareRoi','compareDividend','compareWithdraw','compareSurrender','compareGender'].forEach(id=>$(id).addEventListener('input',runPlanComparison));
+$('singleQuoteTab').addEventListener('click',()=>compareTab(false));$('comparePlansTab').addEventListener('click',()=>compareTab(true));$('runComparison').addEventListener('click',runPlanComparison);
+const oldCompareSwitch=switchView;
+switchView=function(){oldCompareSwitch();const inv=$('category').value==='investment';$('investmentCompareTabs').classList.toggle('hidden',!inv);$('comparisonView').classList.toggle('hidden',!inv||!investmentCompareActive);$('investmentView').classList.toggle('hidden',!inv||investmentCompareActive);if(inv&&investmentCompareActive)runPlanComparison();};
+switchView();
+
 </script>
 </body>
 </html>
