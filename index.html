@@ -249,15 +249,14 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
         <div><label>Plan Being Illustrated</label><select id="claimPlan"><option value="A">HealthShield Gold Max A</option><option value="B">HealthShield Gold Max B</option><option value="B Lite">HealthShield Gold Max B Lite</option></select></div>
         <div><label>Annual Deductible (SGD)</label><input id="claimDeductible" type="number" min="0" step="100" value="3500"><small class="hint">Illustrative amount. Verify applicable deductible for ward, age and policy year.</small></div>
         <div><label>Base Co-insurance (%)</label><input id="claimCoinsurance" type="number" min="0" max="100" step="1" value="10"><small class="hint">Base-plan illustration, before any rider benefit.</small></div>
-        <div><label>Apply Hypothetical Rider?</label><select id="claimRider"><option value="none">No rider adjustment</option><option value="custom">Custom rider illustration</option></select></div>
-        <div><label>Rider Share of Patient Portion (%)</label><input id="claimRiderShare" type="number" min="0" max="100" value="50" disabled><small class="hint">Custom illustrative share; not an official rider benefit.</small></div>
-        <div><label>Maximum Rider Payment (SGD)</label><input id="claimRiderMax" type="number" min="0" value="6000" disabled><small class="hint">Illustration cap only; not a published plan limit.</small></div>
+        <div><label>Rider Selection</label><div id="claimRiderStatus" class="statusbox">Linked to premium quotation</div><small class="hint">Uses the Include matching AIA Max VitalHealth Pro rider checkbox above.</small></div>
+        <div><label>5% Co-payment Cap Eligibility</label><select id="claimCapEligible"><option value="yes">AIA preferred provider / pre-authorised / eligible A&amp;E emergency</option><option value="no">Not eligible for cap</option></select><small class="hint">S$6,000 annual cap, excluding deductible, only where policy conditions are met.</small></div>
         <div><label>Non-claimable / Excluded Items (SGD)</label><input id="claimExcluded" type="number" min="0" value="0"><small class="hint">Additional patient cost outside the eligible bill.</small></div>
       </div>
       <div id="claimExampleError" class="error"></div>
       <div class="stats" id="claimExampleStats" style="margin-top:14px"></div>
       <div class="compare-result" id="claimExampleBreakdown" style="margin-top:16px"></div>
-      <p class="note">Assumes the entered eligible bill is covered, within applicable limits and with no pro-ration. Actual payments depend on claim eligibility, ward class, deductibles, rider terms, co-payment limits, MediShield Life / Integrated Shield Plan allocation, preferred-provider conditions and other policy provisions. The figures show combined insurer-side payment rather than a split between MediShield Life and AIA.</p>
+      <p class="note">Assumes the entered eligible bill is covered, within applicable limits and with no pro-ration. Actual payments depend on claim eligibility, ward class, deductibles, rider terms, co-payment limits, MediShield Life / Integrated Shield Plan allocation, preferred-provider conditions and other policy provisions. The figures show combined insurer-side payment rather than a split between MediShield Life and AIA. For VitalHealth Pro this is a simplified illustrative model based on AIA's published 5% co-payment and conditional S$6,000 annual cap; actual co-payment may differ by provider, claim history and policy conditions.</p>
     </section>
     <section class="summary-grid">
       <div class="compare-card" style="grid-column:1/-1">
@@ -599,29 +598,32 @@ const _oldSwitchView=switchView;switchView=function(){_oldSwitchView();if($('cat
 // Preserve the quotation state if the browser refreshes/discards the tab while you switch or move tabs.
 
 function calculateClaimExample(){
-  const ids=['claimBill','claimDeductible','claimCoinsurance','claimRiderShare','claimRiderMax','claimExcluded'];
-  const [bill,ded,coins,share,maxRider,excluded]=ids.map(id=>Number($(id).value));
+  const ids=['claimBill','claimDeductible','claimCoinsurance','claimExcluded'];
+  const [bill,ded,coins,excluded]=ids.map(id=>Number($(id).value));
   const err=$('claimExampleError'),stats=$('claimExampleStats'),breakdown=$('claimExampleBreakdown');
-  const rider=$('claimRider').value==='custom';
-  $('claimRiderShare').disabled=!rider;$('claimRiderMax').disabled=!rider;
-  if(ids.some(id=>$(id).value.trim()==='')||[bill,ded,coins,share,maxRider,excluded].some(n=>!Number.isFinite(n)||n<0)||coins>100||share>100){
-    err.textContent='Enter valid, non-negative amounts and percentages between 0 and 100.';stats.innerHTML='';breakdown.innerHTML='';return;
+  const rider=$('hospRider').checked, capEligible=$('claimCapEligible').value==='yes';
+  $('claimRiderStatus').textContent=rider?'AIA Max VitalHealth Pro rider included':'No rider selected';
+  if(ids.some(id=>$(id).value.trim()==='')||[bill,ded,coins,excluded].some(n=>!Number.isFinite(n)||n<0)||coins>100){
+    err.textContent='Enter valid, non-negative amounts and a co-insurance percentage between 0 and 100.';stats.innerHTML='';breakdown.innerHTML='';return;
   }
   err.textContent='';
   const appliedDed=Math.min(bill,ded),afterDed=Math.max(0,bill-appliedDed),coin=afterDed*(coins/100);
-  const baseInsurer=afterDed-coin,patientBeforeRider=appliedDed+coin;
-  const riderPayment=rider?Math.min(patientBeforeRider*(share/100),maxRider):0;
-  const patientEligible=patientBeforeRider-riderPayment;
-  const patientTotal=patientEligible+excluded;
+  const baseInsurer=afterDed-coin;
+  // AIA's VitalHealth Pro claim example: deductible remains patient-paid, and
+  // 5% co-payment is applied to the post-deductible eligible amount; capped at
+  // S$6,000 annually only when the qualifying provider/approval conditions hold.
+  const copayment=rider?Math.min(coin,capEligible?Math.min(afterDed*.05,6000):afterDed*.05):coin;
+  const riderPayment=rider?Math.max(0,coin-copayment):0;
+  const patientTotal=appliedDed+copayment+excluded;
   const insurerTotal=baseInsurer+riderPayment;
-  const items=[['Eligible hospital bill',bill],['Deductible borne by patient',appliedDed],['Co-insurance borne by patient',coin],['Base insurer payment',baseInsurer],['Hypothetical rider payment',riderPayment],['Excluded / non-claimable items',excluded],['Total patient portion',patientTotal],['Total insurer-side payment',insurerTotal]];
+  const plan=$('claimPlan').value;
   const fmt=(label,val,detail)=>'<div class="stat"><div class="k">'+label+'</div><div class="v">'+money2(val)+'</div><div class="sub">'+detail+'</div></div>';
-  stats.innerHTML=fmt('Insurer-side payment',insurerTotal,'Base plan + hypothetical rider')+fmt('Patient portion',patientTotal,'Includes non-claimable items')+fmt('Deductible',appliedDed,'Patient portion')+fmt('Co-insurance',coin,'Before rider');
-  breakdown.innerHTML='<h2>Illustrative Claim Breakdown — Plan '+$('claimPlan').value+'</h2><table class="compare-table"><thead><tr><th>Item</th><th>Amount (SGD)</th></tr></thead><tbody>'+items.map(([label,value])=>'<tr><td>'+label+'</td><td>'+money2(value)+'</td></tr>').join('')+'</tbody></table>';
+  stats.innerHTML=fmt('Insurer-side payment',insurerTotal,rider?'Base plan + VitalHealth Pro':'Base plan only')+fmt('Patient portion',patientTotal,'Includes excluded items')+fmt('Deductible',appliedDed,'Patient portion')+fmt(rider?'Rider co-payment':'Base co-insurance',copayment,rider?'After rider adjustment':'Without rider');
+  const items=[['Eligible hospital bill',bill],['Deductible (patient)',appliedDed],['Base plan co-insurance',coin],['Base insurer payment',baseInsurer],['VitalHealth Pro rider payment',riderPayment],['Patient '+(rider?'co-payment':'co-insurance'),copayment],['Excluded / non-claimable items',excluded],['Total patient portion',patientTotal],['Total insurer-side payment',insurerTotal]];
+  breakdown.innerHTML='<h2>Illustrative Claim Breakdown — Plan '+plan+(rider?' + VitalHealth Pro':' (Without Rider)')+'</h2><table class="compare-table"><thead><tr><th>Item</th><th>Amount (SGD)</th></tr></thead><tbody>'+items.map(([label,value])=>'<tr><td>'+label+'</td><td>'+money2(value)+'</td></tr>').join('')+'</tbody></table>';
 }
-['claimBill','claimPlan','claimDeductible','claimCoinsurance','claimRider','claimRiderShare','claimRiderMax','claimExcluded'].forEach(id=>$(id).addEventListener('input',calculateClaimExample));
+['claimBill','claimPlan','claimDeductible','claimCoinsurance','claimCapEligible','claimExcluded','hospRider'].forEach(id=>$(id).addEventListener('input',calculateClaimExample));
 calculateClaimExample();
-
 const HUB_STATE_KEY='insuranceQuotationHubStateV2';
 function saveHubState(){
   try{
