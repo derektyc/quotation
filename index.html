@@ -356,33 +356,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
   </div>
 </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js">
-let proposalPreviewUrl=null;
-function proposalFilename(){
- const safe=v=>String(v||'').trim().replace(/[^a-zA-Z0-9 ._-]/g,' ').replace(/ +/g,' ').slice(0,75)||'Unknown';
- return safe(proposalText('proposalClient'))+' - '+safe(proposalText('proposalDate'))+' - '+safe(proposalText('proposalAdvisor'))+'.pdf';
-}
-async function proposalModalPreview(){
- if(!proposalEntries.length){alert('Add at least one quotation first.');return}
- $('proposalPdfModal').hidden=false;$('proposalPdfStatus').textContent='Generating preview...';$('proposalPdfSave').disabled=true;
- if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}
- if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Please refresh with an internet connection.';return}
- try{
-  const root=$('proposalPdfRender');root.innerHTML=proposalBuildHtml();
-  const settings={margin:10,filename:proposalFilename(),image:{type:'jpeg',quality:.95},html2canvas:{scale:1.5,backgroundColor:'#fff',useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
-  const blob=await html2pdf().set(settings).from(root).outputPdf('blob');
-  proposalPreviewUrl=URL.createObjectURL(blob);$('proposalPdfFrame').src=proposalPreviewUrl;
-  $('proposalPdfStatus').textContent='Ready: '+proposalFilename();$('proposalPdfSave').disabled=false;
- }catch(err){$('proposalPdfStatus').textContent='PDF generation failed: '+err.message}
- finally{$('proposalPdfRender').innerHTML=''}
-}
-function proposalModalClose(){$('proposalPdfModal').hidden=true;$('proposalPdfFrame').src='about:blank';if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}}
-$('proposalPdf').replaceWith($('proposalPdf').cloneNode(true));
-$('proposalPdf').addEventListener('click',proposalModalPreview);
-$('proposalPdfSave').addEventListener('click',()=>{if(!proposalPreviewUrl)return;const a=document.createElement('a');a.href=proposalPreviewUrl;a.download=proposalFilename();document.body.appendChild(a);a.click();a.remove()});
-$('proposalPdfClose').addEventListener('click',proposalModalClose);
-$('proposalPdfModal').addEventListener('click',e=>{if(e.target===$('proposalPdfModal'))proposalModalClose()});
-</script><script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script><script>
 // ----- Password gate -----
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
 const authGate=document.getElementById('authGate');
@@ -995,6 +969,32 @@ const pFile=$('proposalFile');
 pFile.addEventListener('change',async()=>{try{const f=pFile.files[0];if(!f)return;const data=JSON.parse(await f.text());if(!data.recommendations)return;for(const id of ['proposalGoal','proposalRationale','proposalRisks','proposalAlternatives'])if(typeof data.recommendations[id]==='string')$(id).value=data.recommendations[id];proposalPersist();proposalRender()}catch(e){}});
 proposalRender();
 
+
+let proposalPreviewUrl=null;
+function proposalFilename(){
+ const safe=v=>String(v||'').trim().replace(/[^a-zA-Z0-9 ._-]/g,' ').replace(/ +/g,' ').slice(0,75)||'Unknown';
+ return safe(proposalText('proposalClient'))+' - '+safe(proposalText('proposalDate'))+' - '+safe(proposalText('proposalAdvisor'))+'.pdf';
+}
+async function proposalModalPreview(){
+ if(!proposalEntries.length){alert('Add at least one quotation first.');return}
+ $('proposalPdfModal').hidden=false;$('proposalPdfStatus').textContent='Generating preview...';$('proposalPdfSave').disabled=true;
+ if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}
+ if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Please refresh with an internet connection.';return}
+ try{
+  const root=$('proposalPdfRender');root.innerHTML=proposalBuildHtml();
+  const settings={margin:10,filename:proposalFilename(),image:{type:'jpeg',quality:.95},html2canvas:{scale:1.5,backgroundColor:'#fff',useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
+  const blob=await html2pdf().set(settings).from(root).outputPdf('blob');
+  proposalPreviewUrl=URL.createObjectURL(blob);$('proposalPdfFrame').src=proposalPreviewUrl;
+  $('proposalPdfStatus').textContent='Ready: '+proposalFilename();$('proposalPdfSave').disabled=false;
+ }catch(err){$('proposalPdfStatus').textContent='PDF generation failed: '+err.message}
+ finally{$('proposalPdfRender').innerHTML=''}
+}
+function proposalModalClose(){$('proposalPdfModal').hidden=true;$('proposalPdfFrame').src='about:blank';if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}}
+$('proposalPdf').replaceWith($('proposalPdf').cloneNode(true));
+$('proposalPdf').addEventListener('click',proposalModalPreview);
+$('proposalPdfSave').addEventListener('click',()=>{if(!proposalPreviewUrl)return;const a=document.createElement('a');a.href=proposalPreviewUrl;a.download=proposalFilename();document.body.appendChild(a);a.click();a.remove()});
+$('proposalPdfClose').addEventListener('click',proposalModalClose);
+$('proposalPdfModal').addEventListener('click',e=>{if(e.target===$('proposalPdfModal'))proposalModalClose()});
 </script>
 </body>
 </html>
