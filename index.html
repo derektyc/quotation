@@ -669,7 +669,7 @@ function restoreHubState(){
     });
     if(state.currentPlan && PLANS[state.currentPlan]) currentPlan=state.currentPlan;
     if(isAIAInvestment()&&AIA_PRODUCTS[$('product').value]?.kind==='platinum'){$('term').value=platinumTerm()||1;}if(!isAIAInvestment() && $('investmentPlan') && PLANS[$('investmentPlan').value]) currentPlan=$('investmentPlan').value;
-    if(isAIAInvestment()){$('term').disabled=AIA_PRODUCTS[$('product').value].kind!=='pro';}
+    if(isAIAInvestment()&&AIA_PRODUCTS[$('product').value]){$('term').disabled=AIA_PRODUCTS[$('product').value].kind!=='pro';}
     switchView();
     calculateInvestment(); calculateTravel(); calculateHospital();
     return true;
