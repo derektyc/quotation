@@ -111,7 +111,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .compare-tabs{display:flex;gap:9px;margin-top:18px}.compare-tabs button.active{background:#132333;color:white;border-color:#132333}.comparison-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.compare-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.compare-result{overflow:auto}.compare-result table{min-width:760px}.compare-chart{width:100%;height:300px}.compare-help{font-size:12px;color:var(--muted);line-height:1.6}.compare-product-box{background:#faf7f0;padding:15px;border:1px solid #e4dccd;border-radius:13px}@media(max-width:750px){.comparison-fields,.compare-settings{grid-template-columns:1fr}}
 
 .proposal-nav{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0}.proposal-nav button.active{background:#132333;color:#fff;border-color:#132333}.proposal-toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.proposal-items{display:grid;gap:12px}.proposal-item{padding:15px;border:1px solid var(--line);border-radius:13px;background:#fffefa;display:flex;align-items:center;justify-content:space-between;gap:12px}.proposal-item small{display:block;color:var(--muted);margin-top:5px}.proposal-buttons{display:flex;gap:6px;flex-wrap:wrap}.proposal-notice{font-size:12px;color:var(--muted);line-height:1.6}.proposal-preview{border:1px solid var(--line);border-radius:12px;padding:18px;background:#fff}.proposal-preview h3{margin:12px 0}.proposal-checks{display:flex;flex-wrap:wrap;gap:16px}.proposal-checks label{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;font-size:13px}.proposal-checks input{width:auto}.proposal-addbar{display:flex;gap:8px;justify-content:flex-end;margin:14px 0}@media(max-width:640px){.proposal-item{display:block}.proposal-buttons{margin-top:12px}}
-</style>
+#proposalPdfDocument table{min-width:0;width:100%;border-collapse:collapse;font-size:11px}#proposalPdfDocument th,#proposalPdfDocument td{border:1px solid #ddd;padding:6px;position:static;text-align:left;color:#142333;white-space:normal;overflow-wrap:anywhere}#proposalPdfDocument th{background:#efece5}#proposalPdfDocument svg{width:100%;height:auto;display:block}#proposalPdfDocument section{margin-bottom:22px}#proposalPdfDocument .pdf-cover{background:#132839;color:white;padding:24px}#proposalPdfDocument .pdf-cover h1{color:white}#proposalPdfDocument .pdf-years{font-size:9px}#proposalPdfDocument .stat{box-shadow:none}#proposalPdfDocument .pdf-product,#proposalPdfDocument .pdf-projection{page-break-before:always}</style>
 </head>
 <body>
 <div id="authGate">
@@ -356,7 +356,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
   </div>
 </div>
 </div>
-<div id="proposalPdfModal" hidden style="display:none;position:fixed;inset:0;background:#000b;z-index:9999;padding:3vh 4vw"><div style="background:white;height:94vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:12px;gap:12px;align-items:center"><strong>Proposal PDF Preview</strong><div><button id="proposalPdfSave" type="button">Save PDF</button> <button id="proposalPdfClose" type="button">Close</button></div></div><p id="proposalPdfStatus" style="padding:0 12px"></p><iframe id="proposalPdfFrame" title="PDF Preview" style="width:100%;flex:1;border:0"></iframe></div></div><div id="proposalPdfRender" style="position:absolute;left:0;top:0;z-index:-1;background:white;width:794px;pointer-events:none"></div>
+<div id="proposalPdfModal" hidden style="display:none;position:fixed;inset:0;background:#000b;z-index:9999;padding:3vh 4vw"><div style="background:white;height:94vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:12px;gap:12px;align-items:center"><strong>Proposal PDF Preview</strong><div><button id="proposalPdfSave" type="button">Save PDF</button> <button id="proposalPdfClose" type="button">Close</button></div></div><p id="proposalPdfStatus" style="padding:0 12px"></p><div id="proposalPdfContent" style="flex:1;overflow:auto;background:#eee;padding:16px"><div id="proposalPdfDocument" style="width:794px;max-width:100%;margin:0 auto;padding:28px;background:white;color:#142333;box-shadow:0 4px 20px #0002"></div></div></div></div><div id="proposalPdfRender" style="position:absolute;left:0;top:0;z-index:-1;background:white;width:794px;pointer-events:none"></div>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script><script>
 // ----- Password gate -----
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
@@ -965,30 +965,48 @@ pFile.addEventListener('change',async()=>{try{const f=pFile.files[0];if(!f)retur
 proposalRender();
 
 
-let proposalPreviewUrl=null;
+let proposalPdfBusy=false;
 function proposalFilename(){
  const safe=v=>String(v||'').trim().replace(/[^a-zA-Z0-9 ._-]/g,' ').replace(/ +/g,' ').slice(0,75)||'Unknown';
- const raw=proposalText('proposalDate'),parts=raw.split('-'),months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const date=parts.length===3&&Number(parts[1])>=1&&Number(parts[1])<=12?parts[2].padStart(2,'0')+months[Number(parts[1])-1]+parts[0]:safe(raw);return safe(proposalText('proposalClient'))+' - '+date+' - '+safe(proposalText('proposalAdvisor'))+'.pdf';
+ const parts=proposalText('proposalDate').split('-'),months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+ const date=parts.length===3&&Number(parts[1])>=1&&Number(parts[1])<=12?parts[2].padStart(2,'0')+months[Number(parts[1])-1]+parts[0]:safe(proposalText('proposalDate'));
+ return safe(proposalText('proposalClient'))+' - '+date+' - '+safe(proposalText('proposalAdvisor'))+'.pdf';
 }
-async function proposalModalPreview(){
+function proposalModalPreview(){
  if(!proposalEntries.length){alert('Add at least one quotation first.');return}
- $('proposalPdfModal').hidden=false;$('proposalPdfModal').style.display='block';$('proposalPdfStatus').textContent='Generating preview...';$('proposalPdfSave').disabled=true;
- if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}
- if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Please refresh with an internet connection.';return}
- try{
-  const root=$('proposalPdfRender');root.innerHTML=proposalBuildHtml();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-  const settings={margin:10,filename:proposalFilename(),image:{type:'jpeg',quality:.95},html2canvas:{scale:1.5,backgroundColor:'#fff',useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
-  const blob=await html2pdf().set(settings).from(root).outputPdf('blob');
-  if(!blob||blob.size<1000)throw Error('Generated PDF is empty.');proposalPreviewUrl=URL.createObjectURL(blob);$('proposalPdfFrame').src=proposalPreviewUrl;
-  $('proposalPdfStatus').textContent='Ready: '+proposalFilename();$('proposalPdfSave').disabled=false;
- }catch(err){$('proposalPdfStatus').textContent='PDF generation failed: '+err.message}
- finally{$('proposalPdfRender').innerHTML=''}
+ const content=proposalBuildHtml();
+ if(!content||!content.trim()){alert('No proposal content to preview.');return}
+ $('proposalPdfDocument').innerHTML=content;
+ $('proposalPdfModal').hidden=false;$('proposalPdfModal').style.display='block';
+ $('proposalPdfStatus').textContent='Preview ready. Review the proposal, then select Save PDF.';
+ $('proposalPdfSave').disabled=false;
 }
-function proposalModalClose(){$('proposalPdfModal').hidden=true;$('proposalPdfModal').style.display='none';$('proposalPdfFrame').src='about:blank';if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}}
-
-$('proposalPdfSave').addEventListener('click',()=>{if(!proposalPreviewUrl)return;const a=document.createElement('a');a.href=proposalPreviewUrl;a.download=proposalFilename();document.body.appendChild(a);a.click();a.remove()});
+function proposalModalClose(){
+ if(proposalPdfBusy)return;
+ $('proposalPdfModal').hidden=true;$('proposalPdfModal').style.display='none';
+}
+async function proposalModalSave(){
+ if(proposalPdfBusy)return;
+ if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Check your internet connection and refresh.';return}
+ const root=$('proposalPdfDocument');
+ if(!root||!root.textContent.trim()){$('proposalPdfStatus').textContent='Cannot save: proposal preview is empty.';return}
+ proposalPdfBusy=true;$('proposalPdfSave').disabled=true;$('proposalPdfStatus').textContent='Preparing PDF...';
+ try{
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  const options={margin:[12,10,12,10],filename:proposalFilename(),image:{type:'jpeg',quality:.96},html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#fff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
+  const blob=await html2pdf().set(options).from(root).outputPdf('blob');
+  if(!blob||blob.size<5000)throw Error('PDF output appears blank; download stopped. Please report this issue.');
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=proposalFilename();document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+  $('proposalPdfStatus').textContent='PDF saved as '+proposalFilename();
+ }catch(err){$('proposalPdfStatus').textContent='PDF export error: '+(err.message||String(err))}
+ finally{proposalPdfBusy=false;$('proposalPdfSave').disabled=false}
+}
+$('proposalPdfSave').addEventListener('click',proposalModalSave);
 $('proposalPdfClose').addEventListener('click',proposalModalClose);
 $('proposalPdfModal').addEventListener('click',e=>{if(e.target===$('proposalPdfModal'))proposalModalClose()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('proposalPdfModal').hidden)proposalModalClose()});
 </script>
 </body>
 </html>
