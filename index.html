@@ -356,7 +356,33 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
   </div>
 </div>
 </div>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js">
+let proposalPreviewUrl=null;
+function proposalFilename(){
+ const safe=v=>String(v||'').trim().replace(/[^a-zA-Z0-9 ._-]/g,' ').replace(/ +/g,' ').slice(0,75)||'Unknown';
+ return safe(proposalText('proposalClient'))+' - '+safe(proposalText('proposalDate'))+' - '+safe(proposalText('proposalAdvisor'))+'.pdf';
+}
+async function proposalModalPreview(){
+ if(!proposalEntries.length){alert('Add at least one quotation first.');return}
+ $('proposalPdfModal').hidden=false;$('proposalPdfStatus').textContent='Generating preview...';$('proposalPdfSave').disabled=true;
+ if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}
+ if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Please refresh with an internet connection.';return}
+ try{
+  const root=$('proposalPdfRender');root.innerHTML=proposalBuildHtml();
+  const settings={margin:10,filename:proposalFilename(),image:{type:'jpeg',quality:.95},html2canvas:{scale:1.5,backgroundColor:'#fff',useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
+  const blob=await html2pdf().set(settings).from(root).outputPdf('blob');
+  proposalPreviewUrl=URL.createObjectURL(blob);$('proposalPdfFrame').src=proposalPreviewUrl;
+  $('proposalPdfStatus').textContent='Ready: '+proposalFilename();$('proposalPdfSave').disabled=false;
+ }catch(err){$('proposalPdfStatus').textContent='PDF generation failed: '+err.message}
+ finally{$('proposalPdfRender').innerHTML=''}
+}
+function proposalModalClose(){$('proposalPdfModal').hidden=true;$('proposalPdfFrame').src='about:blank';if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}}
+$('proposalPdf').replaceWith($('proposalPdf').cloneNode(true));
+$('proposalPdf').addEventListener('click',proposalModalPreview);
+$('proposalPdfSave').addEventListener('click',()=>{if(!proposalPreviewUrl)return;const a=document.createElement('a');a.href=proposalPreviewUrl;a.download=proposalFilename();document.body.appendChild(a);a.click();a.remove()});
+$('proposalPdfClose').addEventListener('click',proposalModalClose);
+$('proposalPdfModal').addEventListener('click',e=>{if(e.target===$('proposalPdfModal'))proposalModalClose()});
+</script><script>
 // ----- Password gate -----
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
 const authGate=document.getElementById('authGate');
@@ -909,7 +935,7 @@ function proposalPrint(){
   const frame=window.open('','_blank');
   if(!frame){alert('Please allow pop-ups for PDF export.');return}
   const style='body{font-family:Arial,sans-serif;color:#142333;padding:28px;line-height:1.5;font-size:12px}h1{font-size:28px}h2{font-size:17px;margin-top:24px;border-bottom:1px solid #d5c6a9;padding-bottom:7px}.pdf-brand{color:#c09b5b;font-weight:bold;letter-spacing:3px}.pdf-cover{background:#132839;color:white;padding:32px;margin-bottom:25px}.pdf-cover h1{color:white}table{border-collapse:collapse;width:100%;font-size:11px;margin:12px 0}th,td{border:1px solid #ddd;padding:7px;text-align:left;vertical-align:top}th{background:#f3eee5}section{margin-bottom:20px}.pdf-product{break-before:page}.pdf-projection{break-before:page}.pdf-years{font-size:8px}.pdf-years th,.pdf-years td{padding:4px}.pdf-years tr{break-inside:avoid}@page{size:A4;margin:15mm}@media print{body{padding:0}.pdf-cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
-  frame.document.open();frame.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+proposalSafe(proposalText('proposalTitle'))+'</title><style>'+style+'</style></head><body>'+proposalBuildHtml()+'<p style="font-size:10px;color:#777">Generated '+new Date().toLocaleDateString('en-SG')+'</p></body></html>');frame.document.close();frame.focus();setTimeout(()=>frame.print(),400);
+  frame.document.open();frame.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+proposalSafe(proposalText('proposalTitle'))+'</title><style>'+style+'</style></head><body>'+proposalBuildHtml()+'<p style="font-size:10px;color:#777">Generated '+new Date().toLocaleDateString('en-SG')+'</p><div id="proposalPdfModal" hidden style="position:fixed;inset:0;background:#000b;z-index:9999;padding:3vh 4vw"><div style="background:white;height:94vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:12px;gap:12px;align-items:center"><strong>Proposal PDF Preview</strong><div><button id="proposalPdfSave" type="button">Save PDF</button> <button id="proposalPdfClose" type="button">Close</button></div></div><p id="proposalPdfStatus" style="padding:0 12px"></p><iframe id="proposalPdfFrame" title="PDF Preview" style="width:100%;flex:1;border:0"></iframe></div></div><div id="proposalPdfRender" style="position:fixed;left:-100000px;top:0;background:white;width:794px"></div></body></html>');frame.document.close();frame.focus();setTimeout(()=>frame.print(),400);
 }
 $('proposalDate').value=new Date().toISOString().slice(0,10);
 proposalRestore();
