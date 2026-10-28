@@ -111,7 +111,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .compare-tabs{display:flex;gap:9px;margin-top:18px}.compare-tabs button.active{background:#132333;color:white;border-color:#132333}.comparison-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.compare-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.compare-result{overflow:auto}.compare-result table{min-width:760px}.compare-chart{width:100%;height:300px}.compare-help{font-size:12px;color:var(--muted);line-height:1.6}.compare-product-box{background:#faf7f0;padding:15px;border:1px solid #e4dccd;border-radius:13px}@media(max-width:750px){.comparison-fields,.compare-settings{grid-template-columns:1fr}}
 
 .proposal-nav{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0}.proposal-nav button.active{background:#132333;color:#fff;border-color:#132333}.proposal-toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.proposal-items{display:grid;gap:12px}.proposal-item{padding:15px;border:1px solid var(--line);border-radius:13px;background:#fffefa;display:flex;align-items:center;justify-content:space-between;gap:12px}.proposal-item small{display:block;color:var(--muted);margin-top:5px}.proposal-buttons{display:flex;gap:6px;flex-wrap:wrap}.proposal-notice{font-size:12px;color:var(--muted);line-height:1.6}.proposal-preview{border:1px solid var(--line);border-radius:12px;padding:18px;background:#fff}.proposal-preview h3{margin:12px 0}.proposal-checks{display:flex;flex-wrap:wrap;gap:16px}.proposal-checks label{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;font-size:13px}.proposal-checks input{width:auto}.proposal-addbar{display:flex;gap:8px;justify-content:flex-end;margin:14px 0}@media(max-width:640px){.proposal-item{display:block}.proposal-buttons{margin-top:12px}}
-#proposalPdfDocument table{min-width:0;width:100%;border-collapse:collapse;font-size:11px}#proposalPdfDocument th,#proposalPdfDocument td{border:1px solid #ddd;padding:6px;position:static;text-align:left;color:#142333;white-space:normal;overflow-wrap:anywhere}#proposalPdfDocument th{background:#efece5}#proposalPdfDocument svg{width:100%;height:auto;display:block}#proposalPdfDocument section{margin-bottom:22px}#proposalPdfDocument .pdf-cover{background:#132839;color:white;padding:24px}#proposalPdfDocument .pdf-cover h1{color:white}#proposalPdfDocument .pdf-years{font-size:9px}#proposalPdfDocument .stat{box-shadow:none}#proposalPdfDocument .pdf-product,#proposalPdfDocument .pdf-projection{page-break-before:always}</style>
+#proposalPdfDocument table{min-width:0;width:100%;border-collapse:collapse;font-size:11px}#proposalPdfDocument th,#proposalPdfDocument td{border:1px solid #ddd;padding:6px;position:static;text-align:left;color:#142333;white-space:normal;overflow-wrap:anywhere}#proposalPdfDocument th{background:#efece5}#proposalPdfDocument svg{width:100%;height:auto;display:block}#proposalPdfDocument section{margin-bottom:22px}#proposalPdfDocument .pdf-cover{background:#132839;color:white;padding:24px}#proposalPdfDocument .pdf-cover h1{color:white}#proposalPdfDocument .pdf-years{font-size:9px}#proposalPdfDocument .stat{box-shadow:none}#proposalPdfDocument .pdf-product,#proposalPdfDocument .pdf-projection{page-break-before:always}#proposalPdfDocument>.proposal-pdf-page-start{break-before:page;page-break-before:always}#proposalPdfDocument .pdf-years tr{break-inside:avoid}</style>
 </head>
 <body>
 <div id="authGate">
@@ -977,6 +977,7 @@ function proposalModalPreview(){
  const content=proposalBuildHtml();
  if(!content||!content.trim()){alert('No proposal content to preview.');return}
  $('proposalPdfDocument').innerHTML=content;
+ Array.from($('proposalPdfDocument').children).filter(el=>el.matches('header,section')).forEach((el,i)=>el.classList.toggle('proposal-pdf-page-start',i>0));
  $('proposalPdfModal').hidden=false;$('proposalPdfModal').style.display='block';
  $('proposalPdfStatus').textContent='Preview ready. Review the proposal, then select Save PDF.';
  $('proposalPdfSave').disabled=false;
@@ -1017,7 +1018,7 @@ async function proposalModalSave(){
  try{
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   restoreGraphs=await proposalRasterizeGraphs(root);
-  const options={margin:[12,10,12,10],filename:proposalFilename(),image:{type:'jpeg',quality:.96},html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#fff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
+  const options={margin:[12,10,12,10],filename:proposalFilename(),image:{type:'jpeg',quality:.96},html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#fff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],before:'.proposal-pdf-page-start',avoid:['tr']}};
   const blob=await html2pdf().set(options).from(root).outputPdf('blob');
   if(!blob||blob.size<5000)throw Error('PDF output appears blank; download stopped. Please report this issue.');
   const url=URL.createObjectURL(blob),a=document.createElement('a');
