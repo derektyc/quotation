@@ -356,7 +356,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
   </div>
 </div>
 </div>
-<div id="proposalPdfModal" hidden style="position:fixed;inset:0;background:#000b;z-index:9999;padding:3vh 4vw"><div style="background:white;height:94vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:12px;gap:12px;align-items:center"><strong>Proposal PDF Preview</strong><div><button id="proposalPdfSave" type="button">Save PDF</button> <button id="proposalPdfClose" type="button">Close</button></div></div><p id="proposalPdfStatus" style="padding:0 12px"></p><iframe id="proposalPdfFrame" title="PDF Preview" style="width:100%;flex:1;border:0"></iframe></div></div><div id="proposalPdfRender" style="position:fixed;left:-100000px;top:0;background:white;width:794px"></div>
+<div id="proposalPdfModal" hidden style="display:none;position:fixed;inset:0;background:#000b;z-index:9999;padding:3vh 4vw"><div style="background:white;height:94vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:12px;gap:12px;align-items:center"><strong>Proposal PDF Preview</strong><div><button id="proposalPdfSave" type="button">Save PDF</button> <button id="proposalPdfClose" type="button">Close</button></div></div><p id="proposalPdfStatus" style="padding:0 12px"></p><iframe id="proposalPdfFrame" title="PDF Preview" style="width:100%;flex:1;border:0"></iframe></div></div><div id="proposalPdfRender" style="position:fixed;left:-100000px;top:0;background:white;width:794px"></div>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script><script>
 // ----- Password gate -----
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
@@ -920,7 +920,7 @@ $('proposalQuotesTab').addEventListener('click',()=>proposalShow(false));
 $('proposalSave').addEventListener('click',()=>proposalDownload());$('proposalLoad').addEventListener('click',()=>$('proposalFile').click());
 $('proposalFile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.entries))throw Error('Invalid proposal file');proposalEntries=data.entries.slice(0,100);for(const [k,id] of [['client','proposalClient'],['advisor','proposalAdvisor'],['date','proposalDate'],['title','proposalTitle'],['notes','proposalNotes']])if(typeof data[k]==='string')$(id).value=data[k];proposalPersist();proposalRender()}catch(err){alert('Could not load proposal: '+err.message)}e.target.value=''});
 $('proposalClear').addEventListener('click',()=>{if(confirm('Clear all products in the current proposal?')){proposalEntries=[];proposalPersist();proposalRender()}});
-$('proposalPreviewButton').addEventListener('click',proposalRender);$('proposalPdf').addEventListener('click',proposalPrint);
+$('proposalPreviewButton').addEventListener('click',proposalRender);$('proposalPdf').addEventListener('click',proposalModalPreview);
 ['proposalClient','proposalAdvisor','proposalDate','proposalTitle','proposalNotes'].forEach(id=>$(id).addEventListener('input',()=>{proposalPersist();proposalRender()}));
 ['proposalSectionCover','proposalSectionSummary','proposalSectionDetails','proposalSectionProjection','proposalSectionDisclosures'].forEach(id=>$(id).addEventListener('change',proposalRender));
 const proposalPriorSwitch=switchView;
@@ -978,7 +978,7 @@ function proposalFilename(){
 }
 async function proposalModalPreview(){
  if(!proposalEntries.length){alert('Add at least one quotation first.');return}
- $('proposalPdfModal').hidden=false;$('proposalPdfStatus').textContent='Generating preview...';$('proposalPdfSave').disabled=true;
+ $('proposalPdfModal').hidden=false;$('proposalPdfModal').style.display='block';$('proposalPdfStatus').textContent='Generating preview...';$('proposalPdfSave').disabled=true;
  if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}
  if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Please refresh with an internet connection.';return}
  try{
@@ -990,9 +990,8 @@ async function proposalModalPreview(){
  }catch(err){$('proposalPdfStatus').textContent='PDF generation failed: '+err.message}
  finally{$('proposalPdfRender').innerHTML=''}
 }
-function proposalModalClose(){$('proposalPdfModal').hidden=true;$('proposalPdfFrame').src='about:blank';if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}}
-$('proposalPdf').replaceWith($('proposalPdf').cloneNode(true));
-$('proposalPdf').addEventListener('click',proposalModalPreview);
+function proposalModalClose(){$('proposalPdfModal').hidden=true;$('proposalPdfModal').style.display='none';$('proposalPdfFrame').src='about:blank';if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}}
+
 $('proposalPdfSave').addEventListener('click',()=>{if(!proposalPreviewUrl)return;const a=document.createElement('a');a.href=proposalPreviewUrl;a.download=proposalFilename();document.body.appendChild(a);a.click();a.remove()});
 $('proposalPdfClose').addEventListener('click',proposalModalClose);
 $('proposalPdfModal').addEventListener('click',e=>{if(e.target===$('proposalPdfModal'))proposalModalClose()});
