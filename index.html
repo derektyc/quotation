@@ -916,7 +916,7 @@ proposalRestore();
 $('proposalAddCurrent').addEventListener('click',proposalAdd);
 $('proposalBuilderTab').addEventListener('click',()=>proposalShow(true));
 $('proposalQuotesTab').addEventListener('click',()=>proposalShow(false));
-$('proposalSave').addEventListener('click',proposalDownload);$('proposalLoad').addEventListener('click',()=>$('proposalFile').click());
+$('proposalSave').addEventListener('click',()=>proposalDownload());$('proposalLoad').addEventListener('click',()=>$('proposalFile').click());
 $('proposalFile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.entries))throw Error('Invalid proposal file');proposalEntries=data.entries.slice(0,100);for(const [k,id] of [['client','proposalClient'],['advisor','proposalAdvisor'],['date','proposalDate'],['title','proposalTitle'],['notes','proposalNotes']])if(typeof data[k]==='string')$(id).value=data[k];proposalPersist();proposalRender()}catch(err){alert('Could not load proposal: '+err.message)}e.target.value=''});
 $('proposalClear').addEventListener('click',()=>{if(confirm('Clear all products in the current proposal?')){proposalEntries=[];proposalPersist();proposalRender()}});
 $('proposalPreviewButton').addEventListener('click',proposalRender);$('proposalPdf').addEventListener('click',proposalPrint);
@@ -948,6 +948,23 @@ proposalBuildHtml=function(){return proposalOriginalBuild()+(proposalSection('pr
 proposalRender=function(){proposalOriginalRender();$('proposalInsights').innerHTML=proposalAnalysis();const warnings=[];if(!proposalEntries.length)warnings.push('Add at least one quotation');if(!proposalText('proposalClient'))warnings.push('Enter client name');if(!proposalText('proposalRationale'))warnings.push('Enter recommendation rationale');if(proposalEntries.some(x=>x.category==='investment'))warnings.push('Verify illustrations and disclosures against current insurer documents');$('proposalReadiness').textContent='Before issuing: '+(warnings.join(' · ')||'Basic checks complete');$('proposalPreview').innerHTML=proposalBuildHtml()};
 for(const id of ['proposalGoal','proposalRationale','proposalRisks','proposalAlternatives'])$(id).addEventListener('input',proposalRender);
 for(const id of ['proposalSectionAnalysis','proposalSectionAdvice'])$(id).addEventListener('change',proposalRender);
+proposalRender();
+
+
+/* Preserve advisor recommendation fields with proposal files and browser drafts. */
+const pPersistBase=proposalPersist;
+proposalPersist=function(){pPersistBase();try{localStorage.setItem('proposalRecommendationV1',JSON.stringify(Object.fromEntries(['proposalGoal','proposalRationale','proposalRisks','proposalAlternatives'].map(id=>[id,$(id).value]))))}catch(e){}};
+try{const v=JSON.parse(localStorage.getItem('proposalRecommendationV1')||'{}');for(const id of ['proposalGoal','proposalRationale','proposalRisks','proposalAlternatives'])if(typeof v[id]==='string')$(id).value=v[id]}catch(e){}
+for(const id of ['proposalGoal','proposalRationale','proposalRisks','proposalAlternatives'])$(id).addEventListener('input',proposalPersist);
+const pExportOriginal=proposalDownload;
+proposalDownload=function(){
+ if(!proposalEntries.length){alert('Add a quotation first.');return}
+ const data={version:2,entries:proposalEntries,client:proposalText('proposalClient'),advisor:proposalText('proposalAdvisor'),date:proposalText('proposalDate'),title:proposalText('proposalTitle'),notes:proposalText('proposalNotes'),recommendations:Object.fromEntries(['proposalGoal','proposalRationale','proposalRisks','proposalAlternatives'].map(id=>[id,$(id).value]))};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='client-proposal.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);proposalPersist();
+};
+$('proposalSave').addEventListener('click',()=>{}, {once:true});
+const pFile=$('proposalFile');
+pFile.addEventListener('change',async()=>{try{const f=pFile.files[0];if(!f)return;const data=JSON.parse(await f.text());if(!data.recommendations)return;for(const id of ['proposalGoal','proposalRationale','proposalRisks','proposalAlternatives'])if(typeof data.recommendations[id]==='string')$(id).value=data.recommendations[id];proposalPersist();proposalRender()}catch(e){}});
 proposalRender();
 
 </script>
