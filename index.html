@@ -180,7 +180,25 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
     <section class="card" style="margin-top:18px"><div class="toolbar"><div><h2 style="margin:0">Year-by-Year Projection to Age 100</h2><div style="font-size:12px;color:var(--muted);margin-top:4px">Full projection table.</div></div><span id="rowCount" style="font-size:12px;color:var(--muted)"></span></div><div class="table-scroll"><table><thead><tr><th>Policy Year</th><th>Age</th><th>Premium</th><th>Total Premium</th><th>Investment Return</th><th>Monthly Dividend</th><th>Annual Dividend</th><th>Policy Value</th></tr></thead><tbody id="rows"></tbody></table></div><p class="note"><strong>Important:</strong> This is an illustrative calculator and does not replace official product illustrations, policy documents, or financial advice.</p></section>
   </div>
 
-  <div id="travelView" class="section-view hidden">
+  
+<section id="investEasyView" class="section-view hidden">
+  <div class="card"><h2>AIA Invest Easy — Single Premium Quotation</h2><p class="note">Standalone calculation based on AIA Invest Easy brochure (August 2021) and Cash/SRS Product Summary v2.0 (September 2020). This is an illustrative investment projection, not an official benefit illustration.</p>
+    <div class="field-grid">
+      <div><label>Payment Source</label><select id="easySource"><option value="cash">Cash</option><option value="srs">SRS</option><option value="cpf">CPF-OA / CPF-SA (premium charge only)</option></select></div>
+      <div><label>Single Premium (SGD)</label><input id="easyPremium" type="number" min="12000" step="1000" value="20000"></div>
+      <div><label>Client's Age</label><input id="easyAge" type="number" min="0" max="99" value="40"></div>
+      <div><label>Assumed Net ROI p.a. (%)</label><input id="easyRoi" type="number" step="0.1" value="8"></div>
+      <div><label>Assumed Dividend p.a. (%)</label><input id="easyDividend" type="number" step="0.1" value="6"></div>
+      <div><label>Dividend Withdrawal Age (0 = none)</label><input id="easyWithdraw" type="number" min="0" value="65"></div>
+      <div><label>Surrender / Illustration Age</label><input id="easySurrender" type="number" min="1" max="100" value="75"></div>
+    </div>
+    <p id="easySourceNote" class="note"></p><div class="error" id="easyError"></div>
+  </div>
+  <div class="stats" id="easyStats"></div>
+  <div class="card" style="margin-top:18px"><h2>Policy Value Projection</h2><div class="chart-wrap"><svg id="easyChart" viewBox="0 0 700 300" preserveAspectRatio="none"></svg></div><p class="note">Assumed annual dividends are deducted from the projected policy value starting on the selected age row. Monthly dividend is the annual amount divided by 12, not a monthly cash-flow simulation.</p></div>
+  <div class="card" style="margin-top:18px"><h2>Year-by-Year Projection to Age 100</h2><div class="table-scroll"><table><thead><tr><th>Policy Year</th><th>Age</th><th>Premium Paid</th><th>Accumulated Premium</th><th>Investment Return</th><th>Monthly Dividend</th><th>Annual Dividend</th><th>Policy Value</th></tr></thead><tbody id="easyRows"></tbody></table></div><p class="note">No top-ups or other withdrawals are assumed. Fund-level management fees should already be reflected in the net ROI assumption. Dividends and investment performance are not guaranteed. Cash/SRS terms are based on the supplied 2020 summary; CPF policy-specific provisions require separate verification.</p></div>
+</section>
+<div id="travelView" class="section-view hidden">
     <section class="grid">
       <div class="card"><h2>Traveller & Policy Details</h2>
         <div class="field-grid">
@@ -422,7 +440,7 @@ const money=n=>Number.isFinite(n)?new Intl.NumberFormat('en-SG',{style:'currency
 const money2=n=>Number.isFinite(n)?new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n):'—';
 const pct=n=>`${(n*100).toFixed(2).replace(/\.00$/,'')}%`;
 
-const CATALOG={investment:{Manulife:['InvestReady'],AIA:['Pro Achiever 3.0','Platinum Wealth Venture 3.0','Wealth Venture']},travel:{QBE:['Travel Prestige']},hospitalisation:{AIA:['HealthShield Gold Max']}};
+const CATALOG={investment:{Manulife:['InvestReady'],AIA:['Pro Achiever 3.0','Platinum Wealth Venture 3.0','Wealth Venture','Invest Easy']},travel:{QBE:['Travel Prestige']},hospitalisation:{AIA:['HealthShield Gold Max']}};
 function refreshCatalog(){const cat=$('category').value;const insurers=Object.keys(CATALOG[cat]);$('insurer').innerHTML=insurers.map(x=>`<option>${x}</option>`).join('');refreshProducts();switchView()}
 function refreshProducts(){const cat=$('category').value,ins=$('insurer').value;const products=CATALOG[cat][ins]||[];$('product').innerHTML=products.map(x=>`<option>${x}</option>`).join('');if(cat==='investment'&&typeof syncInvestmentProduct==='function')syncInvestmentProduct()}
 function switchView(){const cat=$('category').value;const inv=cat==='investment',travel=cat==='travel',hosp=cat==='hospitalisation';$('investmentView').classList.toggle('hidden',!inv);$('travelView').classList.toggle('hidden',!travel);$('hospitalisationView').classList.toggle('hidden',!hosp);if(inv)calculateInvestment();else if(travel)calculateTravel()}
@@ -454,7 +472,7 @@ const AIA_PRODUCTS={
 };
 function isAIAInvestment(){return $('category').value==='investment'&&$('insurer').value==='AIA'}
 function setModeOptions(aia){const cur=$('mode').value;const opts=aia?['Annually','Semi-Annually','Quarterly','Monthly']:['Annually','Monthly'];$('mode').innerHTML=opts.map(x=>`<option>${x}</option>`).join('');$('mode').value=opts.includes(cur)?cur:opts[0]}
-function syncInvestmentProduct(){if($('category').value!=='investment')return;const aia=$('insurer').value==='AIA';$('aiaGenderWrap').classList.toggle('hidden',!aia);setModeOptions(aia);const sel=$('investmentPlan');sel.innerHTML='';if(aia){const prod=AIA_PRODUCTS[$('product').value];if(!prod)return;prod.options.forEach(x=>sel.insertAdjacentHTML('beforeend',`<option>${x}</option>`));$('investmentPlanLabel').textContent=prod.kind==='pro'?'Initial Investment Period (IIP)':'Premium Term';$('investmentPlanHint').textContent=prod.kind==='pro'?'IIP option cannot be changed after issue. Projection assumes premiums are paid on time.':prod.kind==='platinum'?'Select Single Premium (SRS only), 2-year or 5-year cash premium term. For single premium, enter the total single premium in the Annual Premium field.':'Premium term is fixed by the product.';$('welcomeLabel').textContent='Welcome Bonus';$('bonus2Label').textContent=prod.kind==='pro'?'Special Bonus':'Investment Bonus';$('bonus3Label').textContent='Performance Bonus';$('charge1Label').textContent='Supplementary Charge';$('charge2Label').textContent='Surrender Charge @ Selected Age';loadAIAInvestmentDefaults();}else{$('investmentPlanLabel').textContent='InvestReady Plan';$('investmentPlanHint').textContent='';Object.keys(PLANS).forEach(name=>sel.insertAdjacentHTML('beforeend',`<option>${name}</option>`));$('welcomeLabel').textContent='Welcome Bonus';$('bonus2Label').textContent='Annual Premium Bonus';$('bonus3Label').textContent='Loyalty Bonus';$('charge1Label').textContent='Admin Charge @ MIP';$('charge2Label').textContent='Admin Charge After MIP';if(!PLANS[currentPlan])currentPlan='5 Years Flexi 1';sel.value=currentPlan;loadInvestmentPlan(currentPlan)}}
+function syncInvestmentProduct(){if($('category').value!=='investment')return;if($('product').value==='Invest Easy')return;const aia=$('insurer').value==='AIA';$('aiaGenderWrap').classList.toggle('hidden',!aia);setModeOptions(aia);const sel=$('investmentPlan');sel.innerHTML='';if(aia){const prod=AIA_PRODUCTS[$('product').value];if(!prod)return;prod.options.forEach(x=>sel.insertAdjacentHTML('beforeend',`<option>${x}</option>`));$('investmentPlanLabel').textContent=prod.kind==='pro'?'Initial Investment Period (IIP)':'Premium Term';$('investmentPlanHint').textContent=prod.kind==='pro'?'IIP option cannot be changed after issue. Projection assumes premiums are paid on time.':prod.kind==='platinum'?'Select Single Premium (SRS only), 2-year or 5-year cash premium term. For single premium, enter the total single premium in the Annual Premium field.':'Premium term is fixed by the product.';$('welcomeLabel').textContent='Welcome Bonus';$('bonus2Label').textContent=prod.kind==='pro'?'Special Bonus':'Investment Bonus';$('bonus3Label').textContent='Performance Bonus';$('charge1Label').textContent='Supplementary Charge';$('charge2Label').textContent='Surrender Charge @ Selected Age';loadAIAInvestmentDefaults();}else{$('investmentPlanLabel').textContent='InvestReady Plan';$('investmentPlanHint').textContent='';Object.keys(PLANS).forEach(name=>sel.insertAdjacentHTML('beforeend',`<option>${name}</option>`));$('welcomeLabel').textContent='Welcome Bonus';$('bonus2Label').textContent='Annual Premium Bonus';$('bonus3Label').textContent='Loyalty Bonus';$('charge1Label').textContent='Admin Charge @ MIP';$('charge2Label').textContent='Admin Charge After MIP';if(!PLANS[currentPlan])currentPlan='5 Years Flexi 1';sel.value=currentPlan;loadInvestmentPlan(currentPlan)}}
 function platinumTerm(){const s=$('investmentPlan').value;return s.startsWith('Single')?0:s.startsWith('2-')?2:5}
 function platinumMin(){const t=platinumTerm();return t===0?15000:t===2?48000:18000}
 function proIip(){return Number(($('investmentPlan').value.match(/\d+/)||[10])[0])}
@@ -756,6 +774,46 @@ for(const side of ['A','B']){$('compare'+side+'Product').addEventListener('chang
 $('singleQuoteTab').addEventListener('click',()=>compareTab(false));$('comparePlansTab').addEventListener('click',()=>compareTab(true));$('runComparison').addEventListener('click',runPlanComparison);
 const oldCompareSwitch=switchView;
 switchView=function(){oldCompareSwitch();const inv=$('category').value==='investment';$('investmentCompareTabs').classList.toggle('hidden',!inv);$('comparisonView').classList.toggle('hidden',!inv||!investmentCompareActive);$('investmentView').classList.toggle('hidden',!inv||investmentCompareActive);if(inv&&investmentCompareActive)runPlanComparison();};
+switchView();
+
+
+/* AIA Invest Easy — standalone single-premium simulation to keep the other AIA engines unchanged. */
+const earlierInvestEasyCalc=calculateInvestment;
+calculateInvestment=function(){if($('category').value==='investment'&&$('product').value==='Invest Easy')return;return earlierInvestEasyCalc()};
+function calculateInvestEasy(){
+  const n=id=>Number($(id).value),source=$('easySource').value,premium=n('easyPremium'),age=n('easyAge'),roi=n('easyRoi')/100,div=n('easyDividend')/100,withdraw=n('easyWithdraw'),end=n('easySurrender');
+  const error=$('easyError'),stats=$('easyStats'),tbody=$('easyRows'),svg=$('easyChart');
+  $('easySourceNote').textContent=source==='cpf'?'CPF illustration: 0% premium charge shown in the supplied brochure. The linked product summary covers Cash/SRS only; verify CPF-specific contractual rules and eligibility.':source==='srs'?'SRS: 3% initial premium charge; dividends paid in cash go to the SRS account, subject to SRS rules.':'Cash: 3% initial premium charge.';
+  const valid=[premium,age,roi,div,withdraw,end].every(Number.isFinite)&&premium>=12000&&Number.isInteger(age)&&age>=0&&age<100&&Number.isInteger(end)&&end>age&&end<=100&&Number.isInteger(withdraw)&&withdraw>=0&&(withdraw===0||(withdraw>=age&&withdraw<=end))&&roi>-1&&div>=0&&div<=1;
+  if(!valid){error.textContent='Please enter a premium of at least S$12,000, valid ages and valid return assumptions.';stats.innerHTML='';tbody.innerHTML='';svg.innerHTML='';return}
+  error.textContent='';
+  const charge=source==='cpf'?0:.03,invested=premium*(1-charge),rows=[];let value=invested,cumulativeDiv=0;
+  for(let year=1;year<=100-age;year++){
+    const rowAge=age+year,previous=value,investment=previous*(1+roi),annualDividend=(withdraw===0||rowAge<withdraw)?0:Math.max(0,investment*div);
+    value=Math.max(0,investment-annualDividend);cumulativeDiv+=annualDividend;
+    rows.push({year,age:rowAge,premium:year===1?premium:0,totalPremium:premium,investmentReturn:investment-previous,monthlyDividend:annualDividend/12,annualDividend,policyValue:value,totalDividends:cumulativeDiv});
+  }
+  const sr=rows.find(row=>row.age===end);
+  const fmt=(title,val,description)=>'<div class="stat"><div class="k">'+title+'</div><div class="v">'+money2(val)+'</div><div class="sub">'+description+'</div></div>';
+  stats.innerHTML=fmt('Premium Paid',premium,'Single premium')+fmt('Premium Charge',premium*charge,source==='cpf'?'0%':'3%')+fmt('Policy Value',sr.policyValue,'At age '+end)+fmt('Total Return',sr.policyValue+sr.totalDividends,'Value + dividends');
+  tbody.innerHTML=rows.map(row=>'<tr'+(row.age===end?' class="highlight"':row.age>end?' class="post-surrender"':'')+'><td>'+row.year+'</td><td>'+row.age+'</td><td>'+money2(row.premium)+'</td><td>'+money2(row.totalPremium)+'</td><td>'+money2(row.investmentReturn)+'</td><td>'+money2(row.monthlyDividend)+'</td><td>'+money2(row.annualDividend)+'</td><td>'+money2(row.policyValue)+'</td></tr>').join('');
+  const W=700,H=300,L=65,R=20,T=20,B=35,max=Math.max(1,...rows.map(r=>r.policyValue)),x=i=>L+i/(rows.length-1||1)*(W-L-R),y=v=>H-B-v/max*(H-T-B);
+  const grid=Array.from({length:5},(_,i)=>{const yy=T+(H-T-B)*i/4;return '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="#e3ddd2"/><text x="'+(L-8)+'" y="'+(yy+3)+'" font-size="11" text-anchor="end" fill="#667085">'+compact(max*(1-i/4))+'</text>'}).join('');
+  const path=rows.map((r,i)=>(i?'L':'M')+x(i)+','+y(r.policyValue)).join(' ');
+  const marker=rows.findIndex(r=>r.age===end);
+  svg.innerHTML=grid+'<path d="'+path+'" fill="none" stroke="#c7a86b" stroke-width="3"/>'+(marker>=0?'<circle cx="'+x(marker)+'" cy="'+y(sr.policyValue)+'" r="5" fill="#2f6b57"/>':'')+'<text x="'+L+'" y="'+(H-8)+'" font-size="11">Age '+rows[0].age+'</text><text x="'+(W-R)+'" y="'+(H-8)+'" text-anchor="end" font-size="11">Age 100</text>';
+}
+['easySource','easyPremium','easyAge','easyRoi','easyDividend','easyWithdraw','easySurrender'].forEach(id=>$(id).addEventListener('input',calculateInvestEasy));
+const oldInvestEasySwitch=switchView;
+switchView=function(){
+  oldInvestEasySwitch();
+  const easy=$('category').value==='investment'&&$('product').value==='Invest Easy',show=easy&&!investmentCompareActive;
+  $('investEasyView').classList.toggle('hidden',!show);
+  if(easy){$('investmentView').classList.add('hidden');if(show)calculateInvestEasy();}
+};
+const oldInvestEasyCompareTab=compareTab;
+compareTab=function(show){oldInvestEasyCompareTab(show);switchView();};
+calculateInvestEasy();
 switchView();
 
 </script>
