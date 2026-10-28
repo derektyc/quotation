@@ -109,6 +109,8 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 
 /* Investment comparison workspace */
 .compare-tabs{display:flex;gap:9px;margin-top:18px}.compare-tabs button.active{background:#132333;color:white;border-color:#132333}.comparison-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.compare-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.compare-result{overflow:auto}.compare-result table{min-width:760px}.compare-chart{width:100%;height:300px}.compare-help{font-size:12px;color:var(--muted);line-height:1.6}.compare-product-box{background:#faf7f0;padding:15px;border:1px solid #e4dccd;border-radius:13px}@media(max-width:750px){.comparison-fields,.compare-settings{grid-template-columns:1fr}}
+
+.proposal-nav{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0}.proposal-nav button.active{background:#132333;color:#fff;border-color:#132333}.proposal-toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.proposal-items{display:grid;gap:12px}.proposal-item{padding:15px;border:1px solid var(--line);border-radius:13px;background:#fffefa;display:flex;align-items:center;justify-content:space-between;gap:12px}.proposal-item small{display:block;color:var(--muted);margin-top:5px}.proposal-buttons{display:flex;gap:6px;flex-wrap:wrap}.proposal-notice{font-size:12px;color:var(--muted);line-height:1.6}.proposal-preview{border:1px solid var(--line);border-radius:12px;padding:18px;background:#fff}.proposal-preview h3{margin:12px 0}.proposal-checks{display:flex;flex-wrap:wrap;gap:16px}.proposal-checks label{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;font-size:13px}.proposal-checks input{width:auto}.proposal-addbar{display:flex;gap:8px;justify-content:flex-end;margin:14px 0}@media(max-width:640px){.proposal-item{display:block}.proposal-buttons{margin-top:12px}}
 </style>
 </head>
 <body>
@@ -126,7 +128,19 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 <div id="protectedApp" hidden>
 <header><div class="header-inner auth-header-inner"><div><h1>Insurance Quotation Hub</h1><p>One workspace for investment, travel and hospitalisation insurance quotations.</p></div><button id="lockApp" class="auth-lock" type="button">🔒 Lock</button></div></header>
 <div class="wrap">
-  <section class="switcher">
+
+<div class="proposal-nav"><button type="button" id="proposalQuotesTab" class="active">Quotations</button><button type="button" id="proposalBuilderTab">Proposal Builder <span id="proposalCount">0</span></button></div>
+<div class="proposal-addbar" id="proposalAddBar"><button type="button" id="proposalAddCurrent">＋ Add Current Quotation to Proposal</button></div>
+<section id="proposalBuilderView" class="section-view hidden">
+  <div class="card"><h2>Client Proposal Builder</h2><p class="proposal-notice">Add quotations from Investment, Travel or Hospitalisation. Each entry is a saved snapshot; changing the source quotation later will not silently change the proposal. Reorder entries, save/load the proposal as JSON, and use the browser's Print / Save as PDF function to export one client document.</p>
+  <div class="field-grid"><div><label>Client Name</label><input id="proposalClient" placeholder="Client full name"></div><div><label>Proposal Date</label><input type="date" id="proposalDate"></div><div><label>Advisor / Prepared By</label><input id="proposalAdvisor" value="Derek Ting — Personal Wealth Manager"></div><div><label>Proposal Title</label><input id="proposalTitle" value="Insurance & Wealth Planning Proposal"></div></div>
+  <div style="margin-top:12px"><label>Advisor Notes</label><textarea id="proposalNotes" rows="3" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:12px" placeholder="Optional introduction or recommendations"></textarea></div>
+  <div class="proposal-toolbar"><button id="proposalSave" type="button">Save Proposal (JSON)</button><button id="proposalLoad" type="button">Load Proposal (JSON)</button><input id="proposalFile" type="file" accept="application/json,.json" class="hidden"><button id="proposalPreviewButton" type="button">Refresh Preview</button><button id="proposalPdf" type="button">Export PDF / Print</button><button id="proposalClear" type="button">Clear Proposal</button></div>
+  <div class="proposal-checks"><label><input type="checkbox" id="proposalSectionCover" checked>Cover & client details</label><label><input type="checkbox" id="proposalSectionSummary" checked>Product summary</label><label><input type="checkbox" id="proposalSectionDetails" checked>Individual quotations</label><label><input type="checkbox" id="proposalSectionProjection" checked>Investment projection tables</label><label><input type="checkbox" id="proposalSectionDisclosures" checked>Disclosures</label></div>
+  <p id="proposalMessage" class="proposal-notice"></p><h2>Products in Proposal</h2><div id="proposalItems" class="proposal-items"></div>
+  </div><div class="card" style="margin-top:18px"><h2>Proposal Preview</h2><div id="proposalPreview" class="proposal-preview"></div></div>
+</section>
+  <section class="switcher" id="quotationSwitcher">
     <div><label>Category</label><select id="category"><option value="investment">Investment</option><option value="travel">Travel Insurance</option><option value="hospitalisation">Hospitalisation</option></select></div>
     <div><label>Insurer</label><select id="insurer"></select></div>
     <div><label>Product</label><select id="product"></select></div>
@@ -815,6 +829,102 @@ const oldInvestEasyCompareTab=compareTab;
 compareTab=function(show){oldInvestEasyCompareTab(show);switchView();};
 calculateInvestEasy();
 switchView();
+
+
+/* Standalone client proposal builder: immutable quote snapshots + local JSON and print-to-PDF. */
+const PROPOSAL_KEY='insuranceProposalBuilderV1';
+let proposalEntries=[],proposalScreen=false;
+const proposalSafe=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const proposalText=id=>($(id)?.value||'').trim();
+function proposalPersist(){try{localStorage.setItem(PROPOSAL_KEY,JSON.stringify({entries:proposalEntries,client:proposalText('proposalClient'),advisor:proposalText('proposalAdvisor'),title:proposalText('proposalTitle'),date:proposalText('proposalDate'),notes:proposalText('proposalNotes')}))}catch(e){}}
+function proposalRestore(){try{const data=JSON.parse(localStorage.getItem(PROPOSAL_KEY)||'null');if(!data)return;proposalEntries=Array.isArray(data.entries)?data.entries.slice(0,100):[];for(const [k,id] of [['client','proposalClient'],['advisor','proposalAdvisor'],['title','proposalTitle'],['date','proposalDate'],['notes','proposalNotes']])if(typeof data[k]==='string')$(id).value=data[k]}catch(e){}}
+function proposalReportData(){
+  const category=$('category').value,insurer=$('insurer').value,product=$('product').value;
+  const item={id:Date.now()+Math.random(),category,insurer,product,added:new Date().toISOString(),details:[],rows:[]};
+  const add=(label,value)=>item.details.push({label,value:String(value??'')});
+  if(category==='investment'){
+    if(investmentCompareActive){throw Error('Please add individual quotations from Single Quotation. Comparison charts are not a standalone product quotation.')}
+    if(product==='Invest Easy'){
+      if($('easyError').textContent.trim())throw Error('Please correct the Invest Easy quotation before adding.');
+      item.product='AIA Invest Easy';add('Payment source',proposalText('easySource'));add('Single premium',money2(Number(proposalText('easyPremium'))));add('Client age',proposalText('easyAge'));add('ROI assumption',proposalText('easyRoi')+'%');add('Dividend assumption',proposalText('easyDividend')+'%');add('Dividend withdrawal age',proposalText('easyWithdraw'));add('Illustration age',proposalText('easySurrender'));
+      for(const row of $('easyRows').querySelectorAll('tr'))item.rows.push([...row.cells].map(c=>c.textContent));
+      item.headers=['Policy Year','Age','Premium Paid','Total Premium','Investment Return','Monthly Dividend','Annual Dividend','Policy Value'];
+      for(const node of $('easyStats').querySelectorAll('.stat'))add(node.querySelector('.k')?.textContent,node.querySelector('.v')?.textContent);
+    }else{
+      if($('premiumError').textContent.trim()||$('ageError').textContent.trim()||Number(proposalText('premium'))<=0)throw Error('Please enter a valid investment quotation before adding.');
+      add('Product option',proposalText('investmentPlan'));add('Annual premium',money2(Number(proposalText('premium'))));add('Premium term',proposalText('term')+' year(s)');add('Payment mode',proposalText('mode'));add('Client age',proposalText('age'));add('Assumed ROI',proposalText('roi')+'%');add('Assumed dividend rate',proposalText('dividend')+'%');add('Dividend withdrawal age',proposalText('withdrawAge'));add('Surrender age',proposalText('surrenderAge'));
+      for(const [label,id] of [['Total Premiums','totalPaid'],['Total Dividends','totalDividend'],['Policy Value','policyValue'],['Total Return','totalReturn']])add(label,$(id).textContent);
+      for(const row of $('rows').querySelectorAll('tr'))item.rows.push([...row.cells].map(c=>c.textContent));
+      item.headers=['Policy Year','Age','Premium Paid','Cumulative Premium','Investment Value','Monthly Dividend','Annual Dividend','Policy Value'];
+    }
+  }else if(category==='hospitalisation'){
+    if($('hospError').textContent.trim())throw Error('Complete the hospitalisation quotation first.');
+    add('Person to protect',proposalText('hospProtect'));add('Quote effective date',proposalText('hospEffectiveDate'));add('Age next birthday',String(hospitalAnb()));add('Include VitalHealth Pro rider',$('hospRider').checked?'Yes':'No');add('Cancer Care Pro',$('hospCancer').checked?'Yes':'No');add('Emergency Care Pro',$('hospEmergency').checked?'Yes':'No');
+    add('Plan quotations (annual)',[...$('hospQuoteCards').querySelectorAll('.plan-card')].map(el=>el.innerText.replace(/\s+/g,' ').trim()).join(' | '));
+    add('Illustrative claim — selected plan',proposalText('claimPlan'));add('Eligible hospital bill',money2(Number(proposalText('claimBill'))));add('Illustrative patient portion',$('claimExampleStats').querySelectorAll('.stat')[1]?.querySelector('.v')?.textContent||'—');
+  }else if(category==='travel'){
+    if($('travelError').textContent.trim())throw Error('Complete the travel quotation first.');
+    add('Region',proposalText('travelRegion'));add('Policy type',proposalText('travelPolicyType'));add('Coverage',proposalText('travelCover'));add('Traveller age',String(travelCurrentAge()));add('Start date',proposalText('travelStart'));add('End date',proposalText('travelEnd'));add('Super Plus premium',$('travelPremiumSuper').textContent);add('Standard Plus premium',$('travelPremiumStandard').textContent);
+  }else throw Error('Choose a supported quotation category first.');
+  return item;
+}
+function proposalAdd(){
+  try{proposalEntries.push(proposalReportData());proposalPersist();proposalRender();$('proposalMessage').textContent='Quotation added. Open Proposal Builder to review or export.'}
+  catch(e){alert(e.message)}
+}
+function proposalShow(show){
+  proposalScreen=show;
+  $('proposalBuilderView').classList.toggle('hidden',!show);
+  $('quotationSwitcher').classList.toggle('hidden',show);$('proposalAddBar').classList.toggle('hidden',show);
+  $('proposalBuilderTab').classList.toggle('active',show);$('proposalQuotesTab').classList.toggle('active',!show);
+  for(const id of ['investmentView','investEasyView','comparisonView','travelView','hospitalisationView','investmentCompareTabs'])if($(id))$(id).classList.toggle('hidden',show||($(id).classList.contains('hidden')&&!show));
+  if(!show)switchView();else proposalRender();
+}
+function proposalSection(id){return $(id).checked}
+function proposalBuildHtml(){
+  const client=proposalSafe(proposalText('proposalClient')||'Client'),title=proposalSafe(proposalText('proposalTitle')||'Insurance & Wealth Planning Proposal'),advisor=proposalSafe(proposalText('proposalAdvisor')),date=proposalSafe(proposalText('proposalDate')||new Date().toISOString().slice(0,10));
+  let content='';
+  if(proposalSection('proposalSectionCover'))content+='<header class="pdf-cover"><div class="pdf-brand">CAPITAL SOLUTIONS</div><h1>'+title+'</h1><p>Prepared for <strong>'+client+'</strong></p><p>Prepared by '+advisor+'</p><p>'+date+'</p></header>';
+  if(proposalSection('proposalSectionSummary'))content+='<section><h2>Proposed Products</h2><table><thead><tr><th>#</th><th>Product</th><th>Insurer</th><th>Category</th></tr></thead><tbody>'+proposalEntries.map((it,i)=>'<tr><td>'+(i+1)+'</td><td>'+proposalSafe(it.product)+'</td><td>'+proposalSafe(it.insurer)+'</td><td>'+proposalSafe(it.category)+'</td></tr>').join('')+'</tbody></table></section>';
+  if(proposalSection('proposalSectionDetails'))content+=proposalEntries.map((it,i)=>'<section class="pdf-product"><h2>'+(i+1)+'. '+proposalSafe(it.insurer)+' — '+proposalSafe(it.product)+'</h2><table><tbody>'+it.details.map(d=>'<tr><td>'+proposalSafe(d.label)+'</td><td>'+proposalSafe(d.value)+'</td></tr>').join('')+'</tbody></table></section>').join('');
+  if(proposalSection('proposalSectionProjection'))content+=proposalEntries.filter(it=>it.rows?.length&&it.headers?.length).map(it=>'<section class="pdf-projection"><h2>'+proposalSafe(it.product)+' — Projection</h2><table class="pdf-years"><thead><tr>'+it.headers.map(h=>'<th>'+proposalSafe(h)+'</th>').join('')+'</tr></thead><tbody>'+it.rows.map(row=>'<tr>'+row.map(c=>'<td>'+proposalSafe(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></section>').join('');
+  if(proposalSection('proposalSectionDisclosures'))content+='<section><h2>Important Disclosures</h2><p>This is an advisor-prepared illustrative proposal, not an official insurer benefit illustration, insurance contract, suitability assessment, or guarantee of coverage or investment return. Investment projections rely on the assumptions shown, may exclude certain charges and do not represent guaranteed performance. Dividends, fund values, benefits, premiums and eligibility are subject to the relevant insurer documents and actual terms. Hospital claim amounts are simplified estimates and not claim approvals. Confirm all figures, current product terms, exclusions and charges with the insurer before proceeding.</p><p>Investment-linked policies may lose value, including part or all of the premiums paid. Early withdrawal or surrender may reduce benefits. Compare each product's premiums, policy terms, risks and net surrender values individually.</p></section>';
+  return content||'<p>No sections selected.</p>';
+}
+function proposalRender(){
+  $('proposalCount').textContent=proposalEntries.length;
+  $('proposalItems').innerHTML=proposalEntries.length?proposalEntries.map((it,i)=>'<div class="proposal-item"><div><strong>'+(i+1)+'. '+proposalSafe(it.insurer)+' · '+proposalSafe(it.product)+'</strong><small>'+proposalSafe(it.category)+' · '+it.details.length+' captured details</small></div><div class="proposal-buttons"><button type="button" data-pmove="'+i+':-1" '+(i===0?'disabled':'')+'>↑</button><button type="button" data-pmove="'+i+':1" '+(i===proposalEntries.length-1?'disabled':'')+'>↓</button><button type="button" data-premove="'+i+'">Remove</button></div></div>').join(''):'<p class="proposal-notice">No quotations added. Return to Quotations and click “Add Current Quotation to Proposal”.</p>';
+  $('proposalPreview').innerHTML=proposalBuildHtml();
+  $('proposalItems').querySelectorAll('[data-premove]').forEach(b=>b.addEventListener('click',()=>{proposalEntries.splice(Number(b.dataset.premove),1);proposalPersist();proposalRender()}));
+  $('proposalItems').querySelectorAll('[data-pmove]').forEach(b=>b.addEventListener('click',()=>{const [i,step]=b.dataset.pmove.split(':').map(Number),j=i+step;[proposalEntries[i],proposalEntries[j]]=[proposalEntries[j],proposalEntries[i]];proposalPersist();proposalRender()}));
+}
+function proposalDownload(){
+  if(!proposalEntries.length){alert('Add a quotation first.');return}
+  proposalPersist();const payload={version:1,entries:proposalEntries,client:proposalText('proposalClient'),advisor:proposalText('proposalAdvisor'),date:proposalText('proposalDate'),title:proposalText('proposalTitle'),notes:proposalText('proposalNotes')};
+  const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));a.href=url;a.download='client-proposal.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+function proposalPrint(){
+  if(!proposalEntries.length){alert('Add at least one quotation to the proposal first.');return}
+  proposalRender();
+  const frame=window.open('','_blank');
+  if(!frame){alert('Please allow pop-ups for PDF export.');return}
+  const style='body{font-family:Arial,sans-serif;color:#142333;padding:28px;line-height:1.5;font-size:12px}h1{font-size:28px}h2{font-size:17px;margin-top:24px;border-bottom:1px solid #d5c6a9;padding-bottom:7px}.pdf-brand{color:#c09b5b;font-weight:bold;letter-spacing:3px}.pdf-cover{background:#132839;color:white;padding:32px;margin-bottom:25px}.pdf-cover h1{color:white}table{border-collapse:collapse;width:100%;font-size:11px;margin:12px 0}th,td{border:1px solid #ddd;padding:7px;text-align:left;vertical-align:top}th{background:#f3eee5}section{margin-bottom:20px}.pdf-product{break-before:page}.pdf-projection{break-before:page}.pdf-years{font-size:8px}.pdf-years th,.pdf-years td{padding:4px}.pdf-years tr{break-inside:avoid}@page{size:A4;margin:15mm}@media print{body{padding:0}.pdf-cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+  frame.document.open();frame.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+proposalSafe(proposalText('proposalTitle'))+'</title><style>'+style+'</style></head><body>'+proposalBuildHtml()+'<p style="font-size:10px;color:#777">Generated '+new Date().toLocaleDateString('en-SG')+'</p></body></html>');frame.document.close();frame.focus();setTimeout(()=>frame.print(),400);
+}
+$('proposalDate').value=new Date().toISOString().slice(0,10);
+proposalRestore();
+$('proposalAddCurrent').addEventListener('click',proposalAdd);
+$('proposalBuilderTab').addEventListener('click',()=>proposalShow(true));
+$('proposalQuotesTab').addEventListener('click',()=>proposalShow(false));
+$('proposalSave').addEventListener('click',proposalDownload);$('proposalLoad').addEventListener('click',()=>$('proposalFile').click());
+$('proposalFile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.entries))throw Error('Invalid proposal file');proposalEntries=data.entries.slice(0,100);for(const [k,id] of [['client','proposalClient'],['advisor','proposalAdvisor'],['date','proposalDate'],['title','proposalTitle'],['notes','proposalNotes']])if(typeof data[k]==='string')$(id).value=data[k];proposalPersist();proposalRender()}catch(err){alert('Could not load proposal: '+err.message)}e.target.value=''});
+$('proposalClear').addEventListener('click',()=>{if(confirm('Clear all products in the current proposal?')){proposalEntries=[];proposalPersist();proposalRender()}});
+$('proposalPreviewButton').addEventListener('click',proposalRender);$('proposalPdf').addEventListener('click',proposalPrint);
+['proposalClient','proposalAdvisor','proposalDate','proposalTitle','proposalNotes'].forEach(id=>$(id).addEventListener('input',()=>{proposalPersist();proposalRender()}));
+['proposalSectionCover','proposalSectionSummary','proposalSectionDetails','proposalSectionProjection','proposalSectionDisclosures'].forEach(id=>$(id).addEventListener('change',proposalRender));
+const proposalPriorSwitch=switchView;
+switchView=function(){proposalPriorSwitch();if(proposalScreen){$('investmentView').classList.add('hidden');$('investEasyView').classList.add('hidden');$('comparisonView').classList.add('hidden');$('travelView').classList.add('hidden');$('hospitalisationView').classList.add('hidden');$('investmentCompareTabs').classList.add('hidden');}};
+proposalRender();
 
 </script>
 </body>
