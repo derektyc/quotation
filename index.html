@@ -356,7 +356,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
   </div>
 </div>
 </div>
-<div id="proposalPdfModal" hidden style="display:none;position:fixed;inset:0;background:#000b;z-index:9999;padding:3vh 4vw"><div style="background:white;height:94vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:12px;gap:12px;align-items:center"><strong>Proposal PDF Preview</strong><div><button id="proposalPdfSave" type="button">Save PDF</button> <button id="proposalPdfClose" type="button">Close</button></div></div><p id="proposalPdfStatus" style="padding:0 12px"></p><iframe id="proposalPdfFrame" title="PDF Preview" style="width:100%;flex:1;border:0"></iframe></div></div><div id="proposalPdfRender" style="position:fixed;left:-100000px;top:0;background:white;width:794px"></div>
+<div id="proposalPdfModal" hidden style="display:none;position:fixed;inset:0;background:#000b;z-index:9999;padding:3vh 4vw"><div style="background:white;height:94vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:12px;gap:12px;align-items:center"><strong>Proposal PDF Preview</strong><div><button id="proposalPdfSave" type="button">Save PDF</button> <button id="proposalPdfClose" type="button">Close</button></div></div><p id="proposalPdfStatus" style="padding:0 12px"></p><iframe id="proposalPdfFrame" title="PDF Preview" style="width:100%;flex:1;border:0"></iframe></div></div><div id="proposalPdfRender" style="position:absolute;left:0;top:0;z-index:-1;background:white;width:794px;pointer-events:none"></div>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script><script>
 // ----- Password gate -----
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
@@ -968,7 +968,7 @@ proposalRender();
 let proposalPreviewUrl=null;
 function proposalFilename(){
  const safe=v=>String(v||'').trim().replace(/[^a-zA-Z0-9 ._-]/g,' ').replace(/ +/g,' ').slice(0,75)||'Unknown';
- return safe(proposalText('proposalClient'))+' - '+safe(proposalText('proposalDate'))+' - '+safe(proposalText('proposalAdvisor'))+'.pdf';
+ const raw=proposalText('proposalDate'),parts=raw.split('-'),months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const date=parts.length===3&&Number(parts[1])>=1&&Number(parts[1])<=12?parts[2].padStart(2,'0')+months[Number(parts[1])-1]+parts[0]:safe(raw);return safe(proposalText('proposalClient'))+' - '+date+' - '+safe(proposalText('proposalAdvisor'))+'.pdf';
 }
 async function proposalModalPreview(){
  if(!proposalEntries.length){alert('Add at least one quotation first.');return}
@@ -976,10 +976,10 @@ async function proposalModalPreview(){
  if(proposalPreviewUrl){URL.revokeObjectURL(proposalPreviewUrl);proposalPreviewUrl=null}
  if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Please refresh with an internet connection.';return}
  try{
-  const root=$('proposalPdfRender');root.innerHTML=proposalBuildHtml();
+  const root=$('proposalPdfRender');root.innerHTML=proposalBuildHtml();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const settings={margin:10,filename:proposalFilename(),image:{type:'jpeg',quality:.95},html2canvas:{scale:1.5,backgroundColor:'#fff',useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
   const blob=await html2pdf().set(settings).from(root).outputPdf('blob');
-  proposalPreviewUrl=URL.createObjectURL(blob);$('proposalPdfFrame').src=proposalPreviewUrl;
+  if(!blob||blob.size<1000)throw Error('Generated PDF is empty.');proposalPreviewUrl=URL.createObjectURL(blob);$('proposalPdfFrame').src=proposalPreviewUrl;
   $('proposalPdfStatus').textContent='Ready: '+proposalFilename();$('proposalPdfSave').disabled=false;
  }catch(err){$('proposalPdfStatus').textContent='PDF generation failed: '+err.message}
  finally{$('proposalPdfRender').innerHTML=''}
