@@ -985,14 +985,38 @@ function proposalModalClose(){
  if(proposalPdfBusy)return;
  $('proposalPdfModal').hidden=true;$('proposalPdfModal').style.display='none';
 }
+async function proposalRasterizeGraphs(root){
+ const replacements=[];
+ for(const svg of Array.from(root.querySelectorAll('svg'))){
+  const clone=svg.cloneNode(true);
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  clone.setAttribute('width','740');clone.setAttribute('height','270');
+  const markup=new XMLSerializer().serializeToString(clone);
+  const source=URL.createObjectURL(new Blob([markup],{type:'image/svg+xml;charset=utf-8'}));
+  try{
+   const image=new Image();
+   await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Unable to render projection graph'));image.src=source});
+   const canvas=document.createElement('canvas');canvas.width=1480;canvas.height=540;
+   const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.drawImage(image,0,0,canvas.width,canvas.height);
+   const png=document.createElement('img');png.src=canvas.toDataURL('image/png');
+   png.alt='Investment projection graph';png.style.cssText='width:100%;height:auto;display:block;max-width:740px;margin:0 auto';
+   svg.replaceWith(png);
+   replacements.push({original:svg,raster:png});
+  }finally{URL.revokeObjectURL(source)}
+ }
+ return ()=>{for(const pair of replacements)if(pair.raster.isConnected)pair.raster.replaceWith(pair.original)};
+}
 async function proposalModalSave(){
  if(proposalPdfBusy)return;
  if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Check your internet connection and refresh.';return}
  const root=$('proposalPdfDocument');
  if(!root||!root.textContent.trim()){$('proposalPdfStatus').textContent='Cannot save: proposal preview is empty.';return}
  proposalPdfBusy=true;$('proposalPdfSave').disabled=true;$('proposalPdfStatus').textContent='Preparing PDF...';
+ let restoreGraphs=()=>{};
  try{
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  restoreGraphs=await proposalRasterizeGraphs(root);
   const options={margin:[12,10,12,10],filename:proposalFilename(),image:{type:'jpeg',quality:.96},html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#fff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
   const blob=await html2pdf().set(options).from(root).outputPdf('blob');
   if(!blob||blob.size<5000)throw Error('PDF output appears blank; download stopped. Please report this issue.');
@@ -1001,7 +1025,7 @@ async function proposalModalSave(){
   setTimeout(()=>URL.revokeObjectURL(url),30000);
   $('proposalPdfStatus').textContent='PDF saved as '+proposalFilename();
  }catch(err){$('proposalPdfStatus').textContent='PDF export error: '+(err.message||String(err))}
- finally{proposalPdfBusy=false;$('proposalPdfSave').disabled=false}
+ finally{restoreGraphs();proposalPdfBusy=false;$('proposalPdfSave').disabled=false}
 }
 $('proposalPdfSave').addEventListener('click',proposalModalSave);
 $('proposalPdfClose').addEventListener('click',proposalModalClose);
