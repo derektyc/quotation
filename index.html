@@ -1060,9 +1060,7 @@ async function proposalRasterizeGraphs(root){
 }
 async function proposalModalSave(){
  if(proposalPdfBusy)return;
- const canvasRenderer=window.html2canvas;
- const JsPDF=window.jspdf&&window.jspdf.jsPDF;
- if(typeof canvasRenderer!=='function'||typeof JsPDF!=='function'){$('proposalPdfStatus').textContent='PDF libraries unavailable. Refresh and check your internet connection.';return}
+ if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF libraries unavailable. Refresh and check your internet connection.';return}
  const source=$('proposalPdfDocument');
  if(!source||!source.textContent.trim()){$('proposalPdfStatus').textContent='Cannot save an empty proposal.';return}
  proposalPdfBusy=true;$('proposalPdfSave').disabled=true;$('proposalPdfStatus').textContent='Rendering proposal PDF...';
@@ -1075,14 +1073,16 @@ async function proposalModalSave(){
   await proposalRasterizeGraphs(sheet);
   const rect=sheet.getBoundingClientRect();
   if(rect.width<500||rect.height<80)throw Error('Proposal content was not laid out correctly.');
-  const canvas=await canvasRenderer(sheet,{scale:1.5,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,windowWidth:Math.max(document.documentElement.clientWidth,850)});
+  const worker=html2pdf().set({margin:0,html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(sheet);
+  const canvas=await worker.toCanvas().get('canvas');
   if(canvas.width<500||canvas.height<100)throw Error('Could not capture the proposal document.');
   // Check actual pixels instead of relying on PDF file size.
   const sample=canvas.getContext('2d').getImageData(0,0,canvas.width,Math.min(canvas.height,900)).data;
   let colored=0;
   for(let i=0;i<sample.length;i+=40){if(sample[i]<235||sample[i+1]<235||sample[i+2]<235)colored++}
   if(colored<30)throw Error('The document capture is blank. Please try refreshing the page.');
-  const pdf=new JsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});
+  const pdf=await worker.toPdf().get('pdf');
+  for(let n=pdf.getNumberOfPages();n>1;n--)pdf.deletePage(n);
   const margin=10,pageW=210,pageH=297,contentW=pageW-margin*2,contentH=pageH-margin*2;
   const sliceHeight=Math.max(1,Math.floor(canvas.width*contentH/contentW));
   let offset=0,page=0;
