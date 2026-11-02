@@ -117,6 +117,9 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .proposal-preview-shell{width:min(1500px,100%);height:min(96vh,1100px);background:#f4f5f7;border-radius:17px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 95px #0007}
 .proposal-preview-top{background:#102838;color:white;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:12px}.proposal-preview-top strong{font-size:17px;display:block}.proposal-preview-eyebrow{font-size:10px;letter-spacing:.15em;color:#d8bc85;margin-bottom:3px}.proposal-preview-name{font-size:12px;color:#d3dee5;display:block;margin-top:3px}.proposal-preview-actions{display:flex;gap:9px;flex-wrap:wrap}.proposal-preview-actions button{background:transparent;border:1px solid #627583;color:white}.proposal-preview-actions .proposal-primary{background:#c7a86b;border-color:#c7a86b;color:#102838}.proposal-preview-main{min-height:0;flex:1;display:grid;grid-template-columns:240px minmax(0,1fr)}.proposal-preview-side{padding:21px 14px;background:#fff;border-right:1px solid #e1e4e8;overflow:auto}.proposal-preview-side-title{text-transform:uppercase;font-size:11px;letter-spacing:.1em;font-weight:800;color:#657481;margin:0 10px 14px}.proposal-preview-side button{width:100%;text-align:left;background:transparent;border:0;color:#324557;padding:10px 11px;font-size:12px;font-weight:600;line-height:1.5}.proposal-preview-side button:hover,.proposal-preview-side button.active{background:#eef2f3;color:#0d3b49}.proposal-preview-side-note{font-size:11px;color:#7a858f;line-height:1.65;padding:15px 10px}.proposal-preview-stage{min-width:0;min-height:0;display:flex;flex-direction:column}.proposal-preview-controls{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 18px;background:#fff;border-bottom:1px solid #e3e6e9;font-size:12px;color:#647480}.proposal-zoom{display:flex;align-items:center;gap:9px}.proposal-zoom button{padding:4px 10px;background:#f3f5f6;border:1px solid #d7dfe2}.proposal-preview-scroll{flex:1;min-height:0;overflow:auto;padding:30px 20px;background:#e8ebee}.proposal-preview-paper{width:794px;max-width:none;min-height:1123px;margin:0 auto;background:white;box-shadow:0 6px 22px #13253620;transform-origin:top center}.proposal-preview-paper #proposalPdfDocument{padding:46px 52px 56px;width:100%;background:#fff;color:#152c3b;font-family:Arial,Helvetica,sans-serif;line-height:1.5;font-size:13px}.proposal-preview-paper h1{font-size:28px;line-height:1.22}.proposal-preview-paper h2{font-size:19px;line-height:1.3;margin:24px 0 15px}.proposal-preview-paper h3{font-size:15px;margin:20px 0 10px}.proposal-preview-paper .pdf-cover{background:#122a3b;color:white;padding:32px;margin:0 0 30px}.proposal-preview-paper .pdf-cover h1{color:white}.proposal-preview-paper section{margin-bottom:28px}.proposal-preview-paper table{min-width:0!important;width:100%!important;border-collapse:collapse;font-size:11px}.proposal-preview-paper td,.proposal-preview-paper th{position:static;white-space:normal!important;word-break:break-word;padding:8px 7px;border:1px solid #d8dee3;color:#152c3b;text-align:left;vertical-align:top}.proposal-preview-paper th{background:#e9eef1!important;color:#172d3b!important}.proposal-preview-paper tr{break-inside:avoid}.proposal-preview-paper svg,.proposal-preview-paper img{max-width:100%;height:auto}.proposal-preview-paper .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.proposal-preview-paper .stat{box-shadow:none}.proposal-preview-paper .proposal-notice{font-size:11px;color:#5f6b73}.proposal-preview-paper .pdf-years{font-size:9px}.proposal-preview-paper .pdf-years td,.proposal-preview-paper .pdf-years th{padding:4px}.proposal-preview-paper .pdf-product,.proposal-preview-paper .pdf-projection{break-before:auto;page-break-before:auto}
 @media(max-width:900px){.proposal-preview-main{grid-template-columns:minmax(0,1fr)}.proposal-preview-side{display:none}.proposal-preview-scroll{padding:16px 8px}.proposal-preview-top{padding:11px 12px}.proposal-preview-actions button{padding:8px}.proposal-preview-controls{padding:6px 9px}}
+
+/* Isolated PDF export sheet, never inheriting modal zoom or A4 mockup min-height. */
+.proposal-export-sheet{position:fixed;top:0;left:0;z-index:1;width:794px;box-sizing:border-box;padding:0;background:#fff;color:#152c3b;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5}.proposal-export-sheet *{box-sizing:border-box}.proposal-export-sheet h1{font-size:28px}.proposal-export-sheet h2{font-size:18px;margin:18px 0 12px}.proposal-export-sheet h3{font-size:14px}.proposal-export-sheet section{margin:0 0 22px;break-before:auto!important;page-break-before:auto!important}.proposal-export-sheet .pdf-cover{background:#122a3b;color:white;padding:28px;margin-bottom:24px}.proposal-export-sheet .pdf-cover h1{color:white}.proposal-export-sheet table{width:100%;min-width:0!important;border-collapse:collapse;font-size:10px}.proposal-export-sheet td,.proposal-export-sheet th{position:static!important;white-space:normal!important;overflow-wrap:anywhere;text-align:left;padding:6px;border:1px solid #d9dee2;color:#142a39}.proposal-export-sheet th{background:#ebeff1!important}.proposal-export-sheet tr{break-inside:avoid}.proposal-export-sheet svg,.proposal-export-sheet img{width:100%;max-width:100%;height:auto}.proposal-export-sheet .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.proposal-export-sheet .stat{box-shadow:none}.proposal-export-sheet .pdf-product,.proposal-export-sheet .pdf-projection,.proposal-export-sheet .pdf-analysis,.proposal-export-sheet .pdf-advice{break-before:auto!important;page-break-before:auto!important}
 </style>
 </head>
 <body>
@@ -1057,24 +1060,28 @@ async function proposalRasterizeGraphs(root){
 }
 async function proposalModalSave(){
  if(proposalPdfBusy)return;
- if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Check your internet connection and refresh.';return}
- const root=$('proposalPdfDocument');
- if(!root||!root.textContent.trim()){$('proposalPdfStatus').textContent='Cannot save: proposal preview is empty.';return}
- proposalPdfBusy=true;$('proposalPdfSave').disabled=true;$('proposalPdfStatus').textContent='Preparing PDF...';
- const previousZoom=proposalZoom;proposalSetZoom(100);
- let restoreGraphs=()=>{};
+ if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF library unavailable. Refresh and check your internet connection.';return}
+ const source=$('proposalPdfDocument');
+ if(!source||!source.textContent.trim()){$('proposalPdfStatus').textContent='Cannot save an empty proposal.';return}
+ proposalPdfBusy=true;$('proposalPdfSave').disabled=true;$('proposalPdfStatus').textContent='Rendering PDF...';
+ // Never capture the zoomable modal sheet: its min-height and position can create blank PDF pages.
+ const sheet=document.createElement('div');
+ sheet.className='proposal-export-sheet';
+ sheet.innerHTML=proposalBuildHtml();
+ document.body.appendChild(sheet);
  try{
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-  restoreGraphs=await proposalRasterizeGraphs(root);
-  const options={margin:[12,10,12,10],filename:proposalFilename(),image:{type:'jpeg',quality:.96},html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#fff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
-  const blob=await html2pdf().set(options).from(root).outputPdf('blob');
-  if(!blob||blob.size<5000)throw Error('PDF output appears blank; download stopped. Please report this issue.');
-  const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download=proposalFilename();document.body.appendChild(a);a.click();a.remove();
+  await proposalRasterizeGraphs(sheet);
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const settings={margin:[12,10,12,10],filename:proposalFilename(),image:{type:'jpeg',quality:.96},html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#fff',scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['legacy'],avoid:['tr']}};
+  const blob=await html2pdf().set(settings).from(sheet).outputPdf('blob');
+  if(!blob||blob.size<5000)throw Error('Generated PDF is too small to be a valid proposal.');
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download=proposalFilename();document.body.appendChild(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),30000);
-  $('proposalPdfStatus').textContent='PDF saved as '+proposalFilename();
+  $('proposalPdfStatus').textContent='Saved: '+proposalFilename();
  }catch(err){$('proposalPdfStatus').textContent='PDF export error: '+(err.message||String(err))}
- finally{restoreGraphs();proposalSetZoom(previousZoom);proposalPdfBusy=false;$('proposalPdfSave').disabled=false}
+ finally{sheet.remove();proposalPdfBusy=false;$('proposalPdfSave').disabled=false}
 }
 $('proposalPdfSave').addEventListener('click',proposalModalSave);
 $('proposalPdfClose').addEventListener('click',proposalModalClose);
