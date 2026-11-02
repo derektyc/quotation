@@ -162,6 +162,10 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 /* Use renderer-owned top/bottom margins on EVERY A4 page (including overflow pages). */
 .proposal-export-sheet{padding:0 52px!important;margin:0!important;width:794px!important}
 .proposal-export-sheet .pdf-keep-comparison{break-inside:avoid!important;page-break-inside:avoid!important}
+
+/* New-page comparison starts below the consistent printable top margin. */
+.proposal-export-sheet .pdf-keep-comparison.pdf-new-page{break-before:page!important;page-break-before:always!important;padding-top:10px!important;margin-top:0!important;overflow:visible!important}
+.proposal-export-sheet .pdf-keep-comparison.pdf-new-page h3{margin:0 0 12px!important;padding-top:0!important;line-height:1.4!important}
 </style>
 </head>
 <body>
@@ -1189,6 +1193,26 @@ function prepareProposalA4(root){
   table.style.tableLayout='fixed';
  });
 }
+
+/* Shared client age in cover and reliable comparison page boundary. */
+const proposalBeforeClientAge=proposalBuildHtml;
+proposalBuildHtml=function(){
+ const host=document.createElement('div');
+ host.innerHTML=proposalBeforeClientAge();
+ const ageValues=proposalEntries.map(item=>{const d=(item.details||[]).find(x=>String(x.label).toLowerCase()==='client age');return d?String(d.value).trim():'';}).filter(Boolean);
+ const commonAge=ageValues.length===proposalEntries.length&&new Set(ageValues).size===1?ageValues[0]:null;
+ if(commonAge){
+   const cover=host.querySelector('header.pdf-cover p strong');
+   if(cover)cover.insertAdjacentText('afterend',' (Age '+commonAge+')');
+   for(const section of host.querySelectorAll('section.pdf-product')){
+     for(const row of section.querySelectorAll('tr')){
+       if(row.cells.length&&row.cells[0].textContent.trim().toLowerCase()==='client age')row.remove();
+     }
+   }
+ }
+ return host.innerHTML;
+};
+
 async function proposalModalSave(){
  if(proposalPdfBusy)return;
  if(typeof html2pdf!=='function'){$('proposalPdfStatus').textContent='PDF libraries unavailable. Refresh and check your internet connection.';return}
@@ -1209,7 +1233,7 @@ async function proposalModalSave(){
   if(heading.textContent.trim()!=='Product Comparison')continue;
   const table=heading.nextElementSibling;
   if(table&&table.tagName==='TABLE'){
-   const block=document.createElement('div');block.className='pdf-keep-comparison';
+   const block=document.createElement('div');block.className='pdf-keep-comparison pdf-new-page';
    heading.before(block);block.append(heading,table);
   }
  }
