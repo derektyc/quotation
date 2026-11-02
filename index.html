@@ -120,6 +120,9 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 
 /* Isolated PDF export sheet, never inheriting modal zoom or A4 mockup min-height. */
 .proposal-export-sheet{position:relative;top:auto;left:auto;z-index:1;width:794px;box-sizing:border-box;padding:0;background:#fff;color:#152c3b;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5}.proposal-export-sheet *{box-sizing:border-box}.proposal-export-sheet h1{font-size:28px}.proposal-export-sheet h2{font-size:18px;margin:18px 0 12px}.proposal-export-sheet h3{font-size:14px}.proposal-export-sheet section{margin:0 0 22px;break-before:auto!important;page-break-before:auto!important}.proposal-export-sheet .pdf-cover{background:#122a3b;color:white;padding:28px;margin-bottom:24px}.proposal-export-sheet .pdf-cover h1{color:white}.proposal-export-sheet table{width:100%;min-width:0!important;border-collapse:collapse;font-size:10px}.proposal-export-sheet td,.proposal-export-sheet th{position:static!important;white-space:normal!important;overflow-wrap:anywhere;text-align:left;padding:6px;border:1px solid #d9dee2;color:#142a39}.proposal-export-sheet th{background:#ebeff1!important}.proposal-export-sheet tr{break-inside:avoid}.proposal-export-sheet svg,.proposal-export-sheet img{width:100%;max-width:100%;height:auto}.proposal-export-sheet .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.proposal-export-sheet .stat{box-shadow:none}.proposal-export-sheet .pdf-product,.proposal-export-sheet .pdf-projection,.proposal-export-sheet .pdf-analysis,.proposal-export-sheet .pdf-advice{break-before:auto!important;page-break-before:auto!important}
+
+/* Proposal document readability and pagination */
+.proposal-preview-paper #proposalPdfDocument th,.proposal-export-sheet th{background:#dce5eb!important;color:#132839!important;font-weight:700!important}.proposal-preview-paper #proposalPdfDocument .compare-table th,.proposal-export-sheet .compare-table th{background:#dce5eb!important;color:#132839!important}.proposal-preview-paper #proposalPdfDocument h2,.proposal-export-sheet h2{break-after:avoid;page-break-after:avoid}.proposal-preview-paper #proposalPdfDocument .proposal-graph-note,.proposal-export-sheet .proposal-graph-note{font-size:11px;color:#687984;margin:3px 0 14px}.proposal-preview-paper #proposalPdfDocument section,.proposal-export-sheet section{break-before:auto!important;page-break-before:auto!important}.proposal-preview-paper #proposalPdfDocument .pdf-years tr,.proposal-export-sheet .pdf-years tr{break-inside:avoid;page-break-inside:avoid}
 </style>
 </head>
 <body>
@@ -145,7 +148,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
   <div class="field-grid"><div><label>Client Name</label><input id="proposalClient" placeholder="Client full name"></div><div><label>Proposal Date</label><input type="date" id="proposalDate"></div><div><label>Advisor / Prepared By</label><input id="proposalAdvisor" value="Derek Ting — Personal Wealth Manager"></div><div><label>Proposal Title</label><input id="proposalTitle" value="Insurance & Wealth Planning Proposal"></div></div>
   <div style="margin-top:12px"><label>Advisor Notes</label><textarea id="proposalNotes" rows="3" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:12px" placeholder="Optional introduction or recommendations"></textarea></div>
   <div class="proposal-toolbar"><button id="proposalSave" type="button">Save Proposal (JSON)</button><button id="proposalLoad" type="button">Load Proposal (JSON)</button><input id="proposalFile" type="file" accept="application/json,.json" class="hidden"><button id="proposalPreviewButton" type="button">Refresh Preview</button><button id="proposalPdf" type="button">Preview PDF</button><button id="proposalClear" type="button">Clear Proposal</button></div>
-  <div class="proposal-checks"><label><input type="checkbox" id="proposalSectionCover" checked>Cover & client details</label><label><input type="checkbox" id="proposalSectionSummary" checked>Product summary</label><label><input type="checkbox" id="proposalSectionDetails" checked>Individual quotations</label><label><input type="checkbox" id="proposalSectionProjection" checked>Investment projection tables</label><label><input type="checkbox" id="proposalSectionAnalysis" checked>Combined analysis</label><label><input type="checkbox" id="proposalSectionAdvice" checked>Advisor rationale</label><label><input type="checkbox" id="proposalSectionDisclosures" checked>Disclosures</label></div>
+  <div class="proposal-checks"><label><input type="checkbox" id="proposalSectionCover" checked>Cover & client details</label><label><input type="checkbox" id="proposalSectionSummary" checked>Product summary</label><label><input type="checkbox" id="proposalSectionDetails" checked>Individual quotations</label><label><input type="checkbox" id="proposalSectionProjection" checked>Investment projection tables</label><label>Projection depth <select id="proposalProjectionDepth" style="width:auto;padding:6px"><option value="surrender" selected>Through selected surrender age</option><option value="full">Full projection to age 100</option><option value="summary">Key ages only</option></select></label><label><input type="checkbox" id="proposalSectionAnalysis" checked>Combined analysis</label><label><input type="checkbox" id="proposalSectionAdvice" checked>Advisor rationale</label><label><input type="checkbox" id="proposalSectionDisclosures" checked>Disclosures</label></div>
   <p id="proposalMessage" class="proposal-notice"></p><h2>Products in Proposal</h2><div id="proposalItems" class="proposal-items"></div>
   </div><div class="card" style="margin-top:18px"><h2>Financial Overview, Comparison & Recommendations</h2><div id="proposalInsights"></div><div class="field-grid"><div><label>Client Objectives</label><textarea id="proposalGoal" rows="3" style="width:100%"></textarea></div><div><label>Advisor Recommendation & Rationale</label><textarea id="proposalRationale" rows="3" style="width:100%"></textarea></div><div><label>Key Risks & Trade-offs</label><textarea id="proposalRisks" rows="3" style="width:100%"></textarea></div><div><label>Alternatives Considered</label><textarea id="proposalAlternatives" rows="3" style="width:100%"></textarea></div></div><div id="proposalReadiness" class="proposal-notice"></div></div><div class="card" style="margin-top:18px"><h2>Proposal Preview</h2><div id="proposalPreview" class="proposal-preview"></div></div>
 </section>
@@ -380,7 +383,43 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script><script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js">
+/* Client-facing projection depth and PDF quality refinements. */
+function proposalProjectionRows(item){
+ const headers=(item.headers||[]).map(v=>String(v).toLowerCase()),index=headers.indexOf('age'),mode=$('proposalProjectionDepth').value;
+ if(index<0)return item.rows||[];
+ const end=pAmount(pDetail(item,'Surrender age')||pDetail(item,'Illustration age'));
+ const rows=(item.rows||[]).filter(r=>mode==='full'||!end||Number(r[index])<=end);
+ if(mode==='summary'){const selected=new Set([55,60,65,70,75,end]);return rows.filter((r,i)=>i===0||i===rows.length-1||selected.has(Number(r[index])));}
+ return rows;
+}
+const proposalPreviousBuild=proposalBuildHtml;
+proposalBuildHtml=function(){
+ let html=proposalPreviousBuild();
+ if(proposalSection('proposalSectionProjection')){
+  // Keep the document structure, replace the full projection tables with selected projection depth.
+  const node=document.createElement('div');node.innerHTML=html;
+  const projectionSections=node.querySelectorAll('section.pdf-projection');
+  const investments=proposalEntries.filter(it=>it.rows?.length&&it.headers?.length);
+  projectionSections.forEach((section,i)=>{
+   const item=investments[i];if(!item)return;
+   const rows=proposalProjectionRows(item),table=section.querySelector('table.pdf-years');
+   if(table){const body=table.querySelector('tbody');if(body)body.innerHTML=rows.map(row=>'<tr>'+row.map(v=>'<td>'+proposalSafe(v)+'</td>').join('')+'</tr>').join('');}
+   const end=pAmount(pDetail(item,'Surrender age')||pDetail(item,'Illustration age'));
+   const graph=section.querySelector('svg');
+   if(graph&&end&&$('proposalProjectionDepth').value!=='full'){
+    const h=item.headers.map(x=>String(x).toLowerCase()),ai=h.indexOf('age'),vi=h.indexOf('policy value');
+    if(ai>=0&&vi>=0){const points=rows.map(r=>({age:Number(r[ai]),value:pAmount(r[vi])}));const wrap=document.createElement('div');wrap.innerHTML=proposalChart(points,item.product+' — Projection to age '+end);graph.replaceWith(wrap.firstElementChild);}
+   }
+   const note=document.createElement('p');note.className='proposal-graph-note';note.textContent=$('proposalProjectionDepth').value==='full'?'Projection continues to age 100; figures after the selected surrender age assume the policy remains in force.':$('proposalProjectionDepth').value==='summary'?'Selected age milestones through the illustration age.':'Projection shown through the selected surrender / illustration age.';
+   const heading=section.querySelector('h2');if(heading)heading.insertAdjacentElement('afterend',note);
+  });
+  html=node.innerHTML;
+ }
+ return html;
+};
+$('proposalProjectionDepth').addEventListener('change',()=>{proposalRender();if(!$('proposalPdfModal').hidden)proposalModalPreview()});
+</script><script>
 // ----- Password gate -----
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
 const authGate=document.getElementById('authGate');
