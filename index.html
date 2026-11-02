@@ -123,7 +123,20 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 
 /* Proposal document readability and pagination */
 .proposal-preview-paper #proposalPdfDocument th,.proposal-export-sheet th{background:#dce5eb!important;color:#132839!important;font-weight:700!important}.proposal-preview-paper #proposalPdfDocument .compare-table th,.proposal-export-sheet .compare-table th{background:#dce5eb!important;color:#132839!important}.proposal-preview-paper #proposalPdfDocument h2,.proposal-export-sheet h2{break-after:avoid;page-break-after:avoid}.proposal-preview-paper #proposalPdfDocument .proposal-graph-note,.proposal-export-sheet .proposal-graph-note{font-size:11px;color:#687984;margin:3px 0 14px}.proposal-preview-paper #proposalPdfDocument section,.proposal-export-sheet section{break-before:auto!important;page-break-before:auto!important}.proposal-preview-paper #proposalPdfDocument .pdf-years tr,.proposal-export-sheet .pdf-years tr{break-inside:avoid;page-break-inside:avoid}
-.proposal-export-sheet .proposal-keep-next,.proposal-preview-paper .proposal-keep-next{break-after:avoid;page-break-after:avoid}.proposal-export-sheet .proposal-executive,.proposal-preview-paper .proposal-executive{background:#f2f6f7;padding:12px 16px;margin:12px 0 22px}.proposal-export-sheet .proposal-executive h2,.proposal-preview-paper .proposal-executive h2{margin:0 0 8px}.proposal-export-sheet .proposal-executive p,.proposal-preview-paper .proposal-executive p{margin:4px 0}</style>
+.proposal-export-sheet .proposal-keep-next,.proposal-preview-paper .proposal-keep-next{break-after:avoid;page-break-after:avoid}.proposal-export-sheet .proposal-executive,.proposal-preview-paper .proposal-executive{background:#f2f6f7;padding:12px 16px;margin:12px 0 22px}.proposal-export-sheet .proposal-executive h2,.proposal-preview-paper .proposal-executive h2{margin:0 0 8px}.proposal-export-sheet .proposal-executive p,.proposal-preview-paper .proposal-executive p{margin:4px 0}
+/* A4-fit export: 190mm equivalent at browser's 96dpi, no horizontal overflow. */
+.proposal-export-sheet{width:718px!important;max-width:718px!important;padding:0 12px!important;margin:0!important;overflow:visible!important}
+.proposal-export-sheet *{max-width:100%;box-sizing:border-box}
+.proposal-export-sheet table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important}
+.proposal-export-sheet td,.proposal-export-sheet th{min-width:0!important;overflow-wrap:anywhere!important;word-break:normal!important;white-space:normal!important;font-size:9px!important;padding:5px 4px!important}
+.proposal-export-sheet .pdf-years{font-size:8px!important}
+.proposal-export-sheet .pdf-years th,.proposal-export-sheet .pdf-years td{font-size:8px!important;padding:4px 3px!important}
+.proposal-export-sheet svg,.proposal-export-sheet img,.proposal-export-sheet canvas{display:block;max-width:100%!important;width:100%!important;height:auto!important}
+.proposal-export-sheet .pdf-new-page{break-before:page!important;page-break-before:always!important}
+.proposal-export-sheet .pdf-keep-comparison{break-inside:avoid!important;page-break-inside:avoid!important;max-width:100%}
+.proposal-export-sheet .pdf-keep-comparison h3{margin:0 0 10px}
+.proposal-export-sheet .pdf-keep-comparison table{margin-top:0}
+</style>
 </head>
 <body>
 <div id="authGate">
@@ -1137,13 +1150,28 @@ async function proposalModalSave(){
  const sheet=document.createElement('div');
  sheet.className='proposal-export-sheet';
  sheet.innerHTML=proposalBuildHtml();
+ // Treat each projection and disclosures as a new A4 section.
+ for(const section of sheet.querySelectorAll('section.pdf-projection'))section.classList.add('pdf-new-page');
+ for(const section of sheet.querySelectorAll('section')){
+  const heading=section.querySelector(':scope > h2');
+  if(heading&&heading.textContent.trim()==='Important Disclosures')section.classList.add('pdf-new-page');
+ }
+ // Product Comparison heading must remain attached to its complete short table.
+ for(const heading of sheet.querySelectorAll('h3')){
+  if(heading.textContent.trim()!=='Product Comparison')continue;
+  const table=heading.nextElementSibling;
+  if(table&&table.tagName==='TABLE'){
+   const block=document.createElement('div');block.className='pdf-keep-comparison';
+   heading.before(block);block.append(heading,table);
+  }
+ }
  document.body.appendChild(sheet);
  try{
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   await proposalRasterizeGraphs(sheet);
   const rect=sheet.getBoundingClientRect();
   if(rect.width<500||rect.height<80)throw Error('Proposal content was not laid out correctly.');
-  const worker=html2pdf().set({margin:0,html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr','h2','.proposal-graph']}}).from(sheet);
+  const worker=html2pdf().set({margin:0,html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],before:'.pdf-new-page',avoid:['tr','.pdf-keep-comparison']}}).from(sheet);
   const canvas=await worker.toCanvas().get('canvas');
   if(canvas.width<500||canvas.height<100)throw Error('Could not capture the proposal document.');
   // Check actual pixels instead of relying on PDF file size.
