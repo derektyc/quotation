@@ -123,7 +123,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 
 /* Proposal document readability and pagination */
 .proposal-preview-paper #proposalPdfDocument th,.proposal-export-sheet th{background:#dce5eb!important;color:#132839!important;font-weight:700!important}.proposal-preview-paper #proposalPdfDocument .compare-table th,.proposal-export-sheet .compare-table th{background:#dce5eb!important;color:#132839!important}.proposal-preview-paper #proposalPdfDocument h2,.proposal-export-sheet h2{break-after:avoid;page-break-after:avoid}.proposal-preview-paper #proposalPdfDocument .proposal-graph-note,.proposal-export-sheet .proposal-graph-note{font-size:11px;color:#687984;margin:3px 0 14px}.proposal-preview-paper #proposalPdfDocument section,.proposal-export-sheet section{break-before:auto!important;page-break-before:auto!important}.proposal-preview-paper #proposalPdfDocument .pdf-years tr,.proposal-export-sheet .pdf-years tr{break-inside:avoid;page-break-inside:avoid}
-</style>
+.proposal-export-sheet .proposal-keep-next,.proposal-preview-paper .proposal-keep-next{break-after:avoid;page-break-after:avoid}.proposal-export-sheet .proposal-executive,.proposal-preview-paper .proposal-executive{background:#f2f6f7;padding:12px 16px;margin:12px 0 22px}.proposal-export-sheet .proposal-executive h2,.proposal-preview-paper .proposal-executive h2{margin:0 0 8px}.proposal-export-sheet .proposal-executive p,.proposal-preview-paper .proposal-executive p{margin:4px 0}</style>
 </head>
 <body>
 <div id="authGate">
@@ -419,6 +419,37 @@ proposalBuildHtml=function(){
  return html;
 };
 $('proposalProjectionDepth').addEventListener('change',()=>{proposalRender();if(!$('proposalPdfModal').hidden)proposalModalPreview()});
+
+/* Proposal client-view refinements — applied once to both preview and PDF export. */
+const proposalClientViewBuild=proposalBuildHtml;
+proposalBuildHtml=function(){
+ const wrapper=document.createElement('div');wrapper.innerHTML=proposalClientViewBuild();
+ const sections=wrapper.querySelectorAll('section.pdf-projection');
+ const items=proposalEntries.filter(it=>it.rows?.length&&it.headers?.length);
+ sections.forEach((section,i)=>{
+  const item=items[i];if(!item)return;
+  const rows=proposalProjectionRows(item),table=section.querySelector('table.pdf-years');
+  if(table){const tbody=table.querySelector('tbody');if(tbody)tbody.innerHTML=rows.map(r=>'<tr>'+r.map(cell=>'<td>'+proposalSafe(cell)+'</td>').join('')+'</tr>').join('');}
+  const headers=item.headers.map(h=>String(h).toLowerCase()),ageIndex=headers.indexOf('age'),valueIndex=headers.indexOf('policy value');
+  const end=pAmount(pDetail(item,'Surrender age')||pDetail(item,'Illustration age'));
+  if(ageIndex>=0&&valueIndex>=0){
+   const graph=section.querySelector('svg');
+   const points=rows.map(row=>({age:Number(row[ageIndex]),value:pAmount(row[valueIndex])}));
+   if(graph&&points.length){const host=document.createElement('div');host.innerHTML=proposalChart(points,item.product+' — '+($('proposalProjectionDepth').value==='full'?'Projection to age 100':'Projection to age '+(end||points[points.length-1].age)));graph.replaceWith(host.firstElementChild);}
+  }
+ });
+ // Keep the comparison heading with the start of its table.
+ wrapper.querySelectorAll('h3').forEach(h=>{if(h.textContent.trim()==='Product Comparison')h.classList.add('proposal-keep-next')});
+ const first=wrapper.querySelector('header.pdf-cover');
+ if(first&&proposalEntries.some(x=>x.category==='investment')){
+  const invest=proposalEntries.filter(x=>x.category==='investment'),amounts=invest.map(x=>({annual:pAmount(pDetail(x,'Annual premium')),single:pAmount(pDetail(x,'Single premium')),term:pAmount(pDetail(x,'Premium term'))}));
+  const total=amounts.reduce((v,x)=>v+x.annual*x.term+x.single,0);
+  const summary=document.createElement('section');summary.className='proposal-executive';
+  summary.innerHTML='<h2>Investment at a Glance</h2><p><strong>'+invest.length+' investment quotation(s)</strong> · Total scheduled premiums: <strong>'+money2(total)+'</strong></p><p class="proposal-notice">Investment assumptions and illustration ages vary by product. Projected figures are non-guaranteed.</p>';
+  const productList=wrapper.querySelector('header.pdf-cover + section');if(productList)productList.insertAdjacentElement('afterend',summary);else first.insertAdjacentElement('afterend',summary);
+ }
+ return wrapper.innerHTML;
+};
 </script><script>
 // ----- Password gate -----
 const AUTH_PASSWORD_SHA256='9065f5a6c679213ea40c7a12b73032a28c83ed4bf96f995992e093c62fed04a4';
