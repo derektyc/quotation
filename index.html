@@ -136,6 +136,17 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .proposal-export-sheet .pdf-keep-comparison{break-inside:avoid!important;page-break-inside:avoid!important;max-width:100%}
 .proposal-export-sheet .pdf-keep-comparison h3{margin:0 0 10px}
 .proposal-export-sheet .pdf-keep-comparison table{margin-top:0}
+
+/* A4 export pagination and printable-width containment */
+.proposal-export-sheet{width:794px!important;max-width:794px!important;overflow:visible!important}
+.proposal-export-sheet section.pdf-projection.a4-new-page,.proposal-export-sheet section.a4-new-page{break-before:page!important;page-break-before:always!important}
+.proposal-export-sheet .a4-keep-together{break-inside:avoid!important;page-break-inside:avoid!important;display:block}
+.proposal-export-sheet .a4-keep-together h3{margin-top:0}
+.proposal-export-sheet table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important;box-sizing:border-box}
+.proposal-export-sheet table tr,.proposal-export-sheet table td,.proposal-export-sheet table th{max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;word-break:normal;white-space:normal!important}
+.proposal-export-sheet .pdf-years{font-size:9px!important}
+.proposal-export-sheet .pdf-years th,.proposal-export-sheet .pdf-years td{padding:4px 3px!important}
+.proposal-export-sheet img,.proposal-export-sheet svg,.proposal-export-sheet .proposal-graph{max-width:100%!important;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -1140,6 +1151,27 @@ async function proposalRasterizeGraphs(root){
   }finally{URL.revokeObjectURL(source)}
  }
  return ()=>{for(const pair of replacements)if(pair.raster.isConnected)pair.raster.replaceWith(pair.original)};
+}
+
+function prepareProposalA4(root){
+ root.querySelectorAll('section.pdf-projection').forEach(el=>el.classList.add('a4-new-page'));
+ root.querySelectorAll('section').forEach(el=>{
+  const heading=el.querySelector(':scope > h2');
+  if(heading&&heading.textContent.trim()==='Important Disclosures')el.classList.add('a4-new-page');
+ });
+ root.querySelectorAll('h3').forEach(heading=>{
+  if(heading.textContent.trim()!=='Product Comparison')return;
+  const table=heading.nextElementSibling;
+  if(!table||table.tagName!=='TABLE')return;
+  const group=document.createElement('div');
+  group.className='a4-keep-together';
+  heading.before(group);
+  group.append(heading,table);
+ });
+ root.querySelectorAll('table').forEach(table=>{
+  table.style.width='100%';table.style.maxWidth='100%';table.style.minWidth='0';
+  table.style.tableLayout='fixed';
+ });
 }
 async function proposalModalSave(){
  if(proposalPdfBusy)return;
