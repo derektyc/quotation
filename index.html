@@ -985,6 +985,33 @@ pFile.addEventListener('change',async()=>{try{const f=pFile.files[0];if(!f)retur
 proposalRender();
 
 
+
+let proposalZoom=100;
+function proposalSetZoom(next){
+ proposalZoom=Math.max(65,Math.min(135,next));
+ const paper=$('proposalPdfPaper');
+ paper.style.zoom=String(proposalZoom/100);
+ $('proposalZoomLabel').textContent=proposalZoom+'%';
+}
+function proposalRenderNavigation(){
+ const nav=$('proposalPreviewSections');nav.innerHTML='';
+ const sections=Array.from($('proposalPdfDocument').children).filter(el=>el.matches('header,section'));
+ sections.forEach((section,index)=>{
+  const heading=section.querySelector('h1,h2');
+  const title=heading?heading.textContent.trim():(section.tagName==='HEADER'?'Cover':'Section '+(index+1));
+  const button=document.createElement('button');button.type='button';
+  button.textContent=(index+1)+'. '+title;
+  button.addEventListener('click',()=>{
+   nav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));button.classList.add('active');
+   section.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  nav.appendChild(button);
+ });
+ if(nav.firstElementChild)nav.firstElementChild.classList.add('active');
+}
+$('proposalZoomIn').addEventListener('click',()=>proposalSetZoom(proposalZoom+10));
+$('proposalZoomOut').addEventListener('click',()=>proposalSetZoom(proposalZoom-10));
+
 let proposalPdfBusy=false;
 function proposalFilename(){
  const safe=v=>String(v||'').trim().replace(/[^a-zA-Z0-9 ._-]/g,' ').replace(/ +/g,' ').slice(0,75)||'Unknown';
@@ -998,8 +1025,8 @@ function proposalModalPreview(){
  if(!content||!content.trim()){alert('No proposal content to preview.');return}
  $('proposalPdfDocument').innerHTML=content;
  
- $('proposalPdfModal').hidden=false;$('proposalPdfModal').style.display='block';
- $('proposalPdfStatus').textContent='Preview ready. Review the proposal, then select Save PDF.';
+ $('proposalPdfModal').hidden=false;$('proposalPdfModal').style.display='grid';
+ $('proposalPdfStatus').textContent='Review the document before downloading';$('proposalPreviewName').textContent=proposalFilename();proposalRenderNavigation();proposalSetZoom(100);
  $('proposalPdfSave').disabled=false;
 }
 function proposalModalClose(){
@@ -1034,6 +1061,7 @@ async function proposalModalSave(){
  const root=$('proposalPdfDocument');
  if(!root||!root.textContent.trim()){$('proposalPdfStatus').textContent='Cannot save: proposal preview is empty.';return}
  proposalPdfBusy=true;$('proposalPdfSave').disabled=true;$('proposalPdfStatus').textContent='Preparing PDF...';
+ const previousZoom=proposalZoom;proposalSetZoom(100);
  let restoreGraphs=()=>{};
  try{
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -1046,7 +1074,7 @@ async function proposalModalSave(){
   setTimeout(()=>URL.revokeObjectURL(url),30000);
   $('proposalPdfStatus').textContent='PDF saved as '+proposalFilename();
  }catch(err){$('proposalPdfStatus').textContent='PDF export error: '+(err.message||String(err))}
- finally{restoreGraphs();proposalPdfBusy=false;$('proposalPdfSave').disabled=false}
+ finally{restoreGraphs();proposalSetZoom(previousZoom);proposalPdfBusy=false;$('proposalPdfSave').disabled=false}
 }
 $('proposalPdfSave').addEventListener('click',proposalModalSave);
 $('proposalPdfClose').addEventListener('click',proposalModalClose);
