@@ -158,6 +158,10 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .proposal-export-sheet table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important}
 .proposal-export-sheet .pdf-years{font-size:9px!important}
 .proposal-export-sheet .pdf-years td,.proposal-export-sheet .pdf-years th{padding:4px!important}
+
+/* Use renderer-owned top/bottom margins on EVERY A4 page (including overflow pages). */
+.proposal-export-sheet{padding:0 52px!important;margin:0!important;width:794px!important}
+.proposal-export-sheet .pdf-keep-comparison{break-inside:avoid!important;page-break-inside:avoid!important}
 </style>
 </head>
 <body>
@@ -1215,7 +1219,7 @@ async function proposalModalSave(){
   await proposalRasterizeGraphs(sheet);
   const rect=sheet.getBoundingClientRect();
   if(rect.width<500||rect.height<80)throw Error('Proposal content was not laid out correctly.');
-  const worker=html2pdf().set({margin:0,html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],before:'.pdf-new-page',avoid:['tr','.pdf-keep-comparison']}}).from(sheet);
+  const worker=html2pdf().set({margin:[12,0,12,0],html2canvas:{scale:1.5,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],before:'.pdf-new-page',avoid:['tr','.pdf-keep-comparison']}}).from(sheet);
   const canvas=await worker.toCanvas().get('canvas');
   if(canvas.width<500||canvas.height<100)throw Error('Could not capture the proposal document.');
   // Check actual pixels instead of relying on PDF file size.
