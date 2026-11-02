@@ -147,6 +147,17 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .proposal-export-sheet .pdf-years{font-size:9px!important}
 .proposal-export-sheet .pdf-years th,.proposal-export-sheet .pdf-years td{padding:4px 3px!important}
 .proposal-export-sheet img,.proposal-export-sheet svg,.proposal-export-sheet .proposal-graph{max-width:100%!important;box-sizing:border-box}
+
+/* PDF typography and in-page A4 margins match preview. */
+.proposal-export-sheet{padding:46px 52px 56px!important;width:794px!important;max-width:794px!important;box-sizing:border-box!important}
+.proposal-export-sheet .pdf-cover{padding:32px!important;margin-bottom:30px!important}
+.proposal-export-sheet h1{font-size:28px!important;line-height:1.22!important}
+.proposal-export-sheet h2{font-size:19px!important;line-height:1.3!important;margin:24px 0 15px!important}
+.proposal-export-sheet h3{font-size:15px!important;margin:20px 0 10px!important}
+.proposal-export-sheet section{margin-bottom:28px!important}
+.proposal-export-sheet table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important}
+.proposal-export-sheet .pdf-years{font-size:9px!important}
+.proposal-export-sheet .pdf-years td,.proposal-export-sheet .pdf-years th{padding:4px!important}
 </style>
 </head>
 <body>
@@ -999,8 +1010,9 @@ function proposalShow(show){
   if(!show)switchView();else proposalRender();
 }
 function proposalSection(id){return $(id).checked}
+function proposalDisplayDate(value){const m=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return String(value||'');const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const month=Number(m[2]);return month>=1&&month<=12?m[3]+months[month-1]+m[1]:String(value||'');}
 function proposalBuildHtml(){
-  const client=proposalSafe(proposalText('proposalClient')||'Client'),title=proposalSafe(proposalText('proposalTitle')||'Insurance & Wealth Planning Proposal'),advisor=proposalSafe(proposalText('proposalAdvisor')),date=proposalSafe(proposalText('proposalDate')||new Date().toISOString().slice(0,10));
+  const client=proposalSafe(proposalText('proposalClient')||'Client'),title=proposalSafe(proposalText('proposalTitle')||'Insurance & Wealth Planning Proposal'),advisor=proposalSafe(proposalText('proposalAdvisor')),date=proposalSafe(proposalDisplayDate(proposalText('proposalDate')||new Date().toISOString().slice(0,10)));
   let content='';
   if(proposalSection('proposalSectionCover'))content+='<header class="pdf-cover"><h1>'+title+'</h1><p>Prepared for <strong>'+client+'</strong></p><p>Prepared by '+advisor+'</p><p>'+date+'</p></header>';
   if(proposalSection('proposalSectionSummary'))content+='<section><h2>Proposed Products</h2><table><thead><tr><th>#</th><th>Product</th><th>Insurer</th><th>Category</th></tr></thead><tbody>'+proposalEntries.map((it,i)=>'<tr><td>'+(i+1)+'</td><td>'+proposalSafe(it.product)+'</td><td>'+proposalSafe(it.insurer)+'</td><td>'+proposalSafe(it.category)+'</td></tr>').join('')+'</tbody></table></section>';
