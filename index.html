@@ -1119,6 +1119,22 @@ function proposalReportData(){
       for(const row of $('rows').querySelectorAll('tr'))item.rows.push([...row.cells].map(c=>c.textContent));
       item.headers=['Policy Year','Age','Premium Paid','Cumulative Premium','Investment Value','Monthly Dividend','Annual Dividend','Policy Value'];
     }
+  }else if(category==='accident'){
+    renderAccidentQuote();
+    const q=paCurrentQuote;
+    if(!q)throw Error($('paQuoteError').textContent||'Please complete a valid personal accident quotation first.');
+    item.product=q.product;
+    add('Insured age last birthday',q.age);
+    add('Basic plan','Plan '+q.plan);
+    if(q.occupation!=='Not applicable')add('Occupational class',q.occupation==='12'?'Class 1 or 2':'Class 3 or 4');
+    if(q.discount)add('Discounted premium basis','Qualifying Solitaire PA policyholder; verify eligibility');
+    add('Premium frequency',q.frequency);
+    for(const component of q.premiumLines)add(component.label+' (Plan '+component.tier+')',paMoney(component.amount));
+    add('Total premium per payment',paMoney(q.payment));
+    add('Annualised premium (illustrative)',paMoney(q.annualised));
+    for(const benefit of q.benefits)add('Benefit — '+benefit.name,benefit.limit);
+    add('Important product notes',q.notes);
+    add('Rate reference','July 2024 product summary, 9% GST included; confirm current AIA quotation');
   }else if(category==='hospitalisation'){
     if($('hospError').textContent.trim())throw Error('Complete the hospitalisation quotation first.');
     add('Person to protect',proposalText('hospProtect'));add('Quote effective date',proposalText('hospEffectiveDate'));add('Age next birthday',String(hospitalAnb()));add('Include VitalHealth Pro rider',$('hospRider').checked?'Yes':'No');add('Cancer Care Pro',$('hospCancer').checked?'Yes':'No');add('Emergency Care Pro',$('hospEmergency').checked?'Yes':'No');
