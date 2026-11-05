@@ -166,6 +166,8 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 /* New-page comparison starts below the consistent printable top margin. */
 .proposal-export-sheet .pdf-keep-comparison.pdf-new-page{break-before:page!important;page-break-before:always!important;padding-top:10px!important;margin-top:0!important;overflow:visible!important}
 .proposal-export-sheet .pdf-keep-comparison.pdf-new-page h3{margin:0 0 12px!important;padding-top:0!important;line-height:1.4!important}
+
+.accident-card .field-grid{margin:14px 0}.accident-options{margin:16px 0;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:12px}.accident-options h3{margin-top:0}.accident-option-grid{display:grid;grid-template-columns:minmax(0,1fr) 185px;gap:12px;align-items:center}.accident-option-grid label{font-weight:600}.accident-checkbox{display:block;padding:8px 0}.accident-table-wrap{width:100%;overflow:auto}.accident-table-wrap table{min-width:420px;width:100%}.accident-links{margin-top:14px}.accident-links a{color:#23736a;font-weight:700}.accident-card .error:not(:empty){margin:12px 0;padding:10px;background:#fff1ed;color:#9a352b;border-radius:8px}@media(max-width:600px){.accident-option-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -197,12 +199,50 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
   </div><div class="card" style="margin-top:18px"><h2>Financial Overview, Comparison & Recommendations</h2><div id="proposalInsights"></div><div class="field-grid"><textarea id="proposalRationale" hidden aria-hidden="true"></textarea><textarea id="proposalRisks" hidden aria-hidden="true"></textarea><textarea id="proposalAlternatives" hidden aria-hidden="true"></textarea></div><div id="proposalReadiness" class="proposal-notice"></div></div><div class="card" style="margin-top:18px"><h2>Proposal Preview</h2><div id="proposalPreview" class="proposal-preview"></div></div>
 </section>
   <section class="switcher" id="quotationSwitcher">
-    <div><label>Category</label><select id="category"><option value="investment">Investment</option><option value="travel">Travel Insurance</option><option value="hospitalisation">Hospitalisation</option></select></div>
+    <div><label>Category</label><select id="category"><option value="investment">Investment</option><option value="travel">Travel Insurance</option><option value="hospitalisation">Hospitalisation</option><option value="accident">Personal Accident</option></select></div>
     <div><label>Insurer</label><select id="insurer"></select></div>
     <div><label>Product</label><select id="product"></select></div>
   </section>
 
   
+
+<section id="accidentView" class="section-view hidden">
+ <div class="card accident-card">
+ <div class="toolbar"><div><h2 style="margin:0">AIA Personal Accident Quotation</h2><p class="proposal-notice">Select a plan and its benefits. Premium rates below are from the supplied July 2024 product summaries and include 9% GST; verify current rates and eligibility with AIA before issuing.</p></div><span class="live-pill">Accident</span></div>
+ <div class="field-grid">
+  <div><label for="paAge">Insured age (last birthday)</label><input id="paAge" type="number" min="0" max="100" value="30"></div>
+  <div><label for="paPlan">Basic plan</label><select id="paPlan"><option value="1">Plan 1</option><option value="2">Plan 2</option><option value="3">Plan 3</option><option value="4">Plan 4</option></select></div>
+  <div><label for="paMode">Premium frequency</label><select id="paMode"><option value="annual">Annual</option><option value="semi">Semi-annual</option><option value="monthly">Monthly</option></select></div>
+  <div id="paOccupationBox"><label for="paOccupation">Occupational class</label><select id="paOccupation"><option value="12">Class 1 or 2</option><option value="34">Class 3 or 4</option></select></div>
+ </div>
+ <div id="paSolitaireOptions" class="accident-options">
+  <h3>Optional Benefits — Solitaire PA (II)</h3>
+  <p class="proposal-notice">Each selected option may use a plan tier no higher than the basic plan.</p>
+  <div class="accident-option-grid">
+   <label><input id="paLifestyle" type="checkbox"> Lifestyle Maintenance Benefits Group</label><select id="paLifestylePlan"></select>
+   <label><input id="paHospital" type="checkbox"> Accidental Hospitalisation Benefits Group</label><select id="paHospitalPlan"></select>
+   <label><input id="paDisability" type="checkbox"> Monthly Disability Care Benefit</label><select id="paDisabilityPlan"></select>
+  </div>
+ </div>
+ <div id="paStarOptions" class="accident-options hidden">
+  <h3>Options — Star Protector Plus</h3>
+  <label class="accident-checkbox"><input id="paStarDiscount" type="checkbox"> Qualifies for discounted rate (policyholder holds AIA Solitaire PA (II), or upgraded Solitaire PA Plan 2 or above)</label>
+  <div class="accident-option-grid">
+   <label><input id="paStarCI" type="checkbox"> Add Child Critical Illnesses Benefit</label>
+   <select id="paStarCITier"><option value="1">S$30,000</option><option value="2">S$50,000</option><option value="3">S$100,000</option></select>
+  </div>
+  <p class="proposal-notice">The discounted rate applies through the insured's age 21 under the product summary; standard rates apply afterwards.</p>
+ </div>
+ <div id="paQuoteError" class="error" role="alert"></div>
+ <div id="paQuoteStats" class="stats" style="margin-top:16px"></div>
+ <h3>Selected Benefits</h3>
+ <div class="accident-table-wrap"><table class="compare-table"><thead><tr><th>Benefit</th><th>Limit / payment (SGD)</th></tr></thead><tbody id="paBenefitRows"></tbody></table></div>
+ <h3>Premium Breakdown</h3>
+ <div class="accident-table-wrap"><table class="compare-table"><thead><tr><th>Coverage</th><th>Selected tier</th><th>Premium (SGD)</th></tr></thead><tbody id="paPremiumRows"></tbody></table></div>
+ <p id="paProductNotes" class="proposal-notice"></p>
+ <div class="accident-links"><a id="paBrochureLink" href="https://www.aia.com.sg/content/dam/sg-wise/en/docs/our-products/en/aia-solitaire-personal-accident.pdf" target="_blank" rel="noopener">AIA brochure ↗</a></div>
+ </div>
+</section>
 <div id="investmentCompareTabs" class="compare-tabs hidden"><button type="button" id="singleQuoteTab" class="active">Single Quotation</button><button type="button" id="comparePlansTab">Compare Plans</button></div>
 <section id="comparisonView" class="section-view hidden">
   <div class="card"><h2>Compare Investment Plans</h2><p class="compare-help">Compare two investment products using shared client age, assumed net ROI, dividend rate, withdrawal age and surrender age. Annual premiums and plan terms can differ. Figures are illustrative and are not official benefit illustrations.</p>
@@ -592,10 +632,10 @@ const money=n=>Number.isFinite(n)?new Intl.NumberFormat('en-SG',{style:'currency
 const money2=n=>Number.isFinite(n)?new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n):'—';
 const pct=n=>`${(n*100).toFixed(2).replace(/\.00$/,'')}%`;
 
-const CATALOG={investment:{Manulife:['InvestReady'],AIA:['Pro Achiever 3.0','Platinum Wealth Venture 3.0','Wealth Venture','Invest Easy']},travel:{QBE:['Travel Prestige']},hospitalisation:{AIA:['HealthShield Gold Max']}};
+const CATALOG={investment:{Manulife:['InvestReady'],AIA:['Pro Achiever 3.0','Platinum Wealth Venture 3.0','Wealth Venture','Invest Easy']},travel:{QBE:['Travel Prestige']},hospitalisation:{AIA:['HealthShield Gold Max']},accident:{AIA:['Solitaire PA (II)','Star Protector Plus']}};
 function refreshCatalog(){const cat=$('category').value;const insurers=Object.keys(CATALOG[cat]);$('insurer').innerHTML=insurers.map(x=>`<option>${x}</option>`).join('');refreshProducts();switchView()}
 function refreshProducts(){const cat=$('category').value,ins=$('insurer').value;const products=CATALOG[cat][ins]||[];$('product').innerHTML=products.map(x=>`<option>${x}</option>`).join('');if(cat==='investment'&&typeof syncInvestmentProduct==='function')syncInvestmentProduct()}
-function switchView(){const cat=$('category').value;const inv=cat==='investment',travel=cat==='travel',hosp=cat==='hospitalisation';$('investmentView').classList.toggle('hidden',!inv);$('travelView').classList.toggle('hidden',!travel);$('hospitalisationView').classList.toggle('hidden',!hosp);if(inv)calculateInvestment();else if(travel)calculateTravel()}
+function switchView(){const cat=$('category').value;const inv=cat==='investment',travel=cat==='travel',hosp=cat==='hospitalisation',accident=cat==='accident';$('investmentView').classList.toggle('hidden',!inv);$('travelView').classList.toggle('hidden',!travel);$('hospitalisationView').classList.toggle('hidden',!hosp);$('accidentView').classList.toggle('hidden',!accident);if(inv)calculateInvestment();else if(travel)calculateTravel();else if(accident&&typeof renderAccidentQuote==='function')renderAccidentQuote()}
 $('category').addEventListener('change',refreshCatalog);$('insurer').addEventListener('change',()=>{refreshProducts();switchView()});$('product').addEventListener('change',()=>{if($('category').value==='investment')syncInvestmentProduct();switchView()});
 
 const PLANS={"5 Years Flexi 1":{"mip":5,"minTerm":1,"minPremium":25000,"tiers":[[25000,null,0.058]],"annualBonus":0,"loyalty":0,"adminMIP":0.025,"adminAfter":0.01,"minSurrenderYear":5,"defaults":{"term":1,"premium":0,"mode":"Annually","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"6 Years Flexi 2":{"mip":6,"minTerm":2,"minPremium":10000,"tiers":[[10000,null,0.116]],"annualBonus":0,"loyalty":0,"adminMIP":0.025,"adminAfter":0.01,"minSurrenderYear":6,"defaults":{"term":2,"premium":0,"mode":"Annually","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"7 Years Flexi 5":{"mip":7,"minTerm":5,"minPremium":12000,"tiers":[[12000,48000,0.07],[48000,null,0.12]],"annualBonus":0,"loyalty":0.003,"adminMIP":0.025,"adminAfter":0.01,"minSurrenderYear":7,"defaults":{"term":5,"premium":0,"mode":"Annually","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"10 Years Flexi 3":{"mip":10,"minTerm":3,"minPremium":6000,"tiers":[[6000,9600,0.08],[9600,null,0.15]],"annualBonus":0.02,"loyalty":0.003,"adminMIP":0.025,"adminAfter":0.007,"minSurrenderYear":10,"defaults":{"term":3,"premium":0,"mode":"Annually","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"10 Years Flexi 5":{"mip":10,"minTerm":5,"minPremium":6000,"tiers":[[6000,9600,0.1],[9600,null,0.3]],"annualBonus":0.05,"loyalty":0.003,"adminMIP":0.025,"adminAfter":0.007,"minSurrenderYear":10,"defaults":{"term":5,"premium":0,"mode":"Monthly","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"10 Years Flexi 8":{"mip":10,"minTerm":8,"minPremium":6000,"tiers":[[6000,9600,0.21],[9600,null,0.38]],"annualBonus":0.05,"loyalty":0.003,"adminMIP":0.025,"adminAfter":0.007,"minSurrenderYear":10,"defaults":{"term":8,"premium":0,"mode":"Annually","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"13 Years Flexi 10":{"mip":13,"minTerm":10,"minPremium":3600,"tiers":[[3600,9600,0.15],[9600,null,0.5]],"annualBonus":0.05,"loyalty":0.003,"adminMIP":0.025,"adminAfter":0.007,"minSurrenderYear":13,"defaults":{"term":10,"premium":0,"mode":"Monthly","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"15 Years Flexi 10":{"mip":15,"minTerm":10,"minPremium":3600,"tiers":[[3600,9600,0.15],[9600,null,0.45]],"annualBonus":0.03,"loyalty":0.003,"adminMIP":0.0218,"adminAfter":0.0095,"minSurrenderYear":15,"defaults":{"term":10,"premium":0,"mode":"Annually","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}},"20 Years Flexi 10":{"mip":20,"minTerm":10,"minPremium":2400,"tiers":[[2400,9600,0.3],[9600,null,0.6]],"annualBonus":0.03,"loyalty":0.003,"adminMIP":0.018,"adminAfter":0.0092,"minSurrenderYear":20,"defaults":{"term":10,"premium":0,"mode":"Annually","age":0,"roi":0.08,"dividend":0.06,"withdrawAge":0,"surrenderAge":100}}};
@@ -1015,7 +1055,7 @@ function proposalShow(show){
   $('proposalBuilderView').classList.toggle('hidden',!show);
   $('quotationSwitcher').classList.toggle('hidden',show);$('proposalAddBar').classList.toggle('hidden',show);
   $('proposalBuilderTab').classList.toggle('active',show);$('proposalQuotesTab').classList.toggle('active',!show);
-  for(const id of ['investmentView','investEasyView','comparisonView','travelView','hospitalisationView','investmentCompareTabs'])if($(id))$(id).classList.toggle('hidden',show||($(id).classList.contains('hidden')&&!show));
+  for(const id of ['investmentView','investEasyView','comparisonView','travelView','hospitalisationView','accidentView','investmentCompareTabs'])if($(id))$(id).classList.toggle('hidden',show||($(id).classList.contains('hidden')&&!show));
   if(!show)switchView();else proposalRender();
 }
 function proposalSection(id){return $(id).checked}
