@@ -2255,6 +2255,7 @@ function renderAccidentQuote(){
   $('paPlan').innerHTML=Array.from({length:star?3:4},(_,i)=>'<option value="'+(i+1)+'">Plan '+(i+1)+'</option>').join('');
   $('paPlan').value='1';paPopulateTiers();
  }
+ if(!$('paLifestylePlan').options.length||!$('paHospitalPlan').options.length||!$('paDisabilityPlan').options.length)paPopulateTiers();
  const base=Number($('paPlan').value);
  const invalid=!validAge||(star?age>16:(age<16||age>70));
  const error=!validAge?'Enter a valid age last birthday.':star&&age>16?'Star Protector Plus: maximum entry age is 16 last birthday.':!star&&age<16?'Solitaire PA (II): minimum entry age is 16 last birthday.':!star&&age>70?'Solitaire PA (II): last entry age is 70 last birthday; age 71–79 rates are for renewals only.':'';
