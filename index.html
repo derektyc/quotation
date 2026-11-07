@@ -1041,17 +1041,20 @@ function proposalReportData(){
   }else if(category==='accident'){
     renderAccidentQuote();
     const q=paCurrentQuote;
-    if(!q)throw Error($('paQuoteError').textContent||'Please complete a valid personal accident quotation first.');
-    item.product=q.product;
+    if(!q)throw Error($('paQuoteError').textContent||'Enter a valid age for the Personal Accident comparison.');
+    item.product=q.product+' — All '+q.planCount+' Plans';
     add('Insured age last birthday',q.age);
-    add('Basic plan','Plan '+q.plan);
     if(q.occupation!=='Not applicable')add('Occupational class',q.occupation==='12'?'Class 1 or 2':'Class 3 or 4');
-    if(q.discount)add('Discounted premium basis','Qualifying Solitaire PA policyholder; verify eligibility');
     add('Premium frequency',q.frequency);
-    for(const component of q.premiumLines)add(component.label+' (Plan '+component.tier+')',paMoney(component.amount));
-    add('Total premium per payment',paMoney(q.payment));
-    add('Annualised premium (illustrative)',paMoney(q.annualised));
-    for(const benefit of q.benefits)add('Benefit — '+benefit.name,benefit.limit);
+    add('Compared plans',Array.from({length:q.planCount},(_,i)=>'Plan '+(i+1)).join(', '));
+    for(const row of q.premiumTable){
+      if(row.length===1){add('Premium section',row[0]);continue;}
+      add('Premium — '+row[0],row.slice(1).join(' | '));
+    }
+    for(const row of q.benefitTable){
+      if(row.length===1){add('Benefit section',row[0]);continue;}
+      add('Benefit — '+row[0],row.slice(1).join(' | '));
+    }
     add('Important product notes',q.notes);
     add('Rate reference','July 2024 product summary, 9% GST included; confirm current AIA quotation');
   }else if(category==='hospitalisation'){
