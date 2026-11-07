@@ -168,6 +168,9 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 .proposal-export-sheet .pdf-keep-comparison.pdf-new-page h3{margin:0 0 12px!important;padding-top:0!important;line-height:1.4!important}
 
 .accident-card .field-grid{margin:14px 0}.accident-options{margin:16px 0;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:12px}.accident-options h3{margin-top:0}.accident-option-grid{display:grid;grid-template-columns:minmax(0,1fr) 185px;gap:12px;align-items:center}.accident-option-grid label{font-weight:600}.accident-checkbox{display:block;padding:8px 0}.accident-table-wrap{width:100%;overflow:auto}.accident-table-wrap table{min-width:420px;width:100%}.accident-links{margin-top:14px}.accident-links a{color:#23736a;font-weight:700}.accident-card .error:not(:empty){margin:12px 0;padding:10px;background:#fff1ed;color:#9a352b;border-radius:8px}@media(max-width:600px){.accident-option-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Personal accident: all plan tiers at once */
+#accidentView .accident-table-wrap{overflow-x:auto}#accidentView .accident-table-wrap table{table-layout:fixed;width:100%;min-width:710px}#accidentView .accident-table-wrap th:first-child,#accidentView .accident-table-wrap td:first-child{width:39%;text-align:left}#accidentView .accident-table-wrap th:not(:first-child),#accidentView .accident-table-wrap td:not(:first-child){text-align:center}#accidentView tr.pa-group th{background:#e9e4d9!important;color:#142837!important;text-align:left!important;font-weight:800;padding:10px}#accidentView .accident-card .stats{grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:650px){#accidentView .accident-card .stats{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -208,14 +211,14 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
 
 <section id="accidentView" class="section-view hidden">
  <div class="card accident-card">
- <div class="toolbar"><div><h2 style="margin:0">AIA Personal Accident Quotation</h2><p class="proposal-notice">Select a plan and its benefits. Premium rates below are from the supplied July 2024 product summaries and include 9% GST; verify current rates and eligibility with AIA before issuing.</p></div><span class="live-pill">Accident</span></div>
+ <div class="toolbar"><div><h2 style="margin:0">AIA Personal Accident Quotation</h2><p class="proposal-notice">Enter the insured details to compare every plan and its benefits. Premium rates below are from the supplied July 2024 product summaries and include 9% GST; verify current rates and eligibility with AIA before issuing.</p></div><span class="live-pill">Accident</span></div>
  <div class="field-grid">
   <div><label for="paAge">Insured age (last birthday)</label><input id="paAge" type="number" min="0" max="100" value="30"></div>
-  <div><label for="paPlan">Basic plan</label><select id="paPlan"><option value="1">Plan 1</option><option value="2">Plan 2</option><option value="3">Plan 3</option><option value="4">Plan 4</option></select></div>
+  <div hidden><label for="paPlan">Basic plan</label><select id="paPlan"><option value="1">Plan 1</option><option value="2">Plan 2</option><option value="3">Plan 3</option><option value="4">Plan 4</option></select></div>
   <div><label for="paMode">Premium frequency</label><select id="paMode"><option value="annual">Annual</option><option value="semi">Semi-annual</option><option value="monthly">Monthly</option></select></div>
   <div id="paOccupationBox"><label for="paOccupation">Occupational class</label><select id="paOccupation"><option value="12">Class 1 or 2</option><option value="34">Class 3 or 4</option></select></div>
  </div>
- <div id="paSolitaireOptions" class="accident-options">
+ <div id="paSolitaireOptions" class="accident-options" hidden>
   <h3>Optional Benefits — Solitaire PA (II)</h3>
   <p class="proposal-notice">Each selected option may use a plan tier no higher than the basic plan.</p>
   <div class="accident-option-grid">
@@ -224,7 +227,7 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
    <label><input id="paDisability" type="checkbox"> Monthly Disability Care Benefit</label><select id="paDisabilityPlan"></select>
   </div>
  </div>
- <div id="paStarOptions" class="accident-options hidden">
+ <div id="paStarOptions" class="accident-options hidden" hidden>
   <h3>Options — Star Protector Plus</h3>
   <label class="accident-checkbox"><input id="paStarDiscount" type="checkbox"> Qualifies for discounted rate (policyholder holds AIA Solitaire PA (II), or upgraded Solitaire PA Plan 2 or above)</label>
   <div class="accident-option-grid">
@@ -235,9 +238,9 @@ tr.highlight{background:#f8efd9;font-weight:750} tr.post-surrender{background:#f
  </div>
  <div id="paQuoteError" class="error" role="alert"></div>
  <div id="paQuoteStats" class="stats" style="margin-top:16px"></div>
- <h3>Selected Benefits</h3>
+ <h3>Benefits Across All Plans</h3>
  <div class="accident-table-wrap"><table class="compare-table"><thead><tr><th>Benefit</th><th>Limit / payment (SGD)</th></tr></thead><tbody id="paBenefitRows"></tbody></table></div>
- <h3>Premium Breakdown</h3>
+ <h3>Premium Comparison</h3>
  <div class="accident-table-wrap"><table class="compare-table"><thead><tr><th>Coverage</th><th>Selected tier</th><th>Premium (SGD)</th></tr></thead><tbody id="paPremiumRows"></tbody></table></div>
  <p id="paProductNotes" class="proposal-notice"></p>
  <div class="accident-links"><a id="paBrochureLink" href="https://www.aia.com.sg/content/dam/sg-wise/en/docs/our-products/en/aia-solitaire-personal-accident.pdf" target="_blank" rel="noopener">AIA brochure ↗</a></div>
@@ -1446,61 +1449,71 @@ function paPopulateTiers(){
 }
 function renderAccidentQuote(){
  if($('category').value!=='accident')return;
- const star=$('product').value==='Star Protector Plus',age=Number($('paAge').value),
- tier=Number($('paPlan').value),mode=paModeIndex(),validAge=Number.isInteger(age)&&age>=0;
- $('paSolitaireOptions').classList.toggle('hidden',star);
- $('paStarOptions').classList.toggle('hidden',!star);
+ const star=$('product').value==='Star Protector Plus';
+ const age=Number($('paAge').value), ageInput=$('paAge').value, mode=paModeIndex();
+ const occup=$('paOccupation').value;
+ const count=star?3:4;
  $('paOccupationBox').classList.toggle('hidden',star);
- if($('paPlan').options.length!==(star?3:4)){
-  $('paPlan').innerHTML=Array.from({length:star?3:4},(_,i)=>'<option value="'+(i+1)+'">Plan '+(i+1)+'</option>').join('');
-  $('paPlan').value='1';paPopulateTiers();
- }
- if(!$('paLifestylePlan').options.length||!$('paHospitalPlan').options.length||!$('paDisabilityPlan').options.length)paPopulateTiers();
- const base=Number($('paPlan').value);
- const invalid=!validAge||(star?age>16:(age<16||age>70));
- const error=!validAge?'Enter a valid age last birthday.':star&&age>16?'Star Protector Plus: maximum entry age is 16 last birthday.':!star&&age<16?'Solitaire PA (II): minimum entry age is 16 last birthday.':!star&&age>70?'Solitaire PA (II): last entry age is 70 last birthday; age 71–79 rates are for renewals only.':'';
+ // Legacy selectors remain available for saved proposal compatibility, but are not required.
+ const validAge=ageInput!==''&&Number.isInteger(age)&&age>=0;
+ const error=!validAge?'Enter a valid age last birthday.':star&&age>16?'Star Protector Plus is for children aged 16 or below at application.':!star&&age<16?'Solitaire PA (II): minimum entry age is 16 last birthday.':!star&&age>70?'Solitaire PA (II): last entry age is 70; ages 71–79 are renewal-only.':'';
  $('paQuoteError').textContent=error;
- const rows=[],premiumLines=[],notes=[];
- let total=0;
- if(star){
-  const rateType=$('paStarDiscount').checked?'discounted':'standard';
-  const basic=PA_STAR_RATES.basic[rateType][mode][base-1];
-  premiumLines.push({label:'Basic Benefits',tier:base,amount:basic});total+=basic;
-  rows.push(...paSelectedBenefits(PA_STAR_BENEFITS,base));
-  rows.push({name:'Payor benefit (accidental death of policyowner)',limit:'Future premiums waived subject to policy terms'});
-  rows.push({name:'Renewal bonus',limit:'5% annually, maximum 5 renewals; applicable benefit only'});
-  if($('paStarCI').checked){
-   const ciTier=Number($('paStarCITier').value),ci=PA_STAR_RATES.ci[rateType][mode][ciTier-1];
-   premiumLines.push({label:'Child Critical Illnesses Benefit',tier:ciTier,amount:ci});total+=ci;
-   rows.push({name:'Optional Child Critical Illnesses Benefit',limit:paBenefitMoney([30000,50000,100000][ciTier-1])});
-  }
-  notes.push('For juveniles aged 16 or below at application. Disease benefits cover only the specified diseases. Discount requires qualifying Solitaire PA policy ownership; standard rates apply beyond age 21. Child CI benefit terminates after age 21. Premiums include 9% GST.');
-  $('paBrochureLink').href='https://www.aia.com.sg/content/dam/sg-wise/en/docs/our-products/en/aia-star-protector-plus.pdf';
- }else{
-  const band=age>=66?'older':'young',occup=$('paOccupation').value,rates=PA_SOL_RATES[band][occup];
-  const basic=rates.basic[mode][base-1];premiumLines.push({label:'Basic Benefits',tier:base,amount:basic});total+=basic;
-  rows.push(...paSelectedBenefits(PA_SOL_BASIC,base));
-  rows.push({name:'Renewal bonus',limit:'5% per renewal up to 30% (specified basic benefits; conditions apply)'});
-  for(const [group,box,selector,label] of [
-   ['lifestyle','paLifestyle','paLifestylePlan','Lifestyle Maintenance Benefits Group'],
-   ['hospital','paHospital','paHospitalPlan','Accidental Hospitalisation Benefits Group'],
-   ['disability','paDisability','paDisabilityPlan','Monthly Disability Care Benefit']
-  ]){
-   if(!$(box).checked)continue;
-   const selected=Math.min(base,Number($(selector).value)),price=rates[group][mode][selected-1];
-   premiumLines.push({label,tier:selected,amount:price});total+=price;
-   rows.push(...paSelectedBenefits(PA_SOL_OPTIONAL[group],selected));
-  }
-  notes.push('24/7 worldwide accident protection, subject to the policy terms. New entry age: 16–70 last birthday. Basic death/disability benefit amounts reduce by 50% from renewal at age 75; optional benefits terminate at the renewal on or following the 75th birthday. Premiums include 9% GST.');
-  $('paBrochureLink').href='https://www.aia.com.sg/content/dam/sg-wise/en/docs/our-products/en/aia-solitaire-personal-accident.pdf';
+ $('paBrochureLink').href=star?'https://www.aia.com.sg/content/dam/sg-wise/en/docs/our-products/en/aia-star-protector-plus.pdf':'https://www.aia.com.sg/content/dam/sg-wise/en/docs/our-products/en/aia-solitaire-personal-accident.pdf';
+ const header='<tr><th>Benefit / Premium</th>'+Array.from({length:count},(_,i)=>'<th>Plan '+(i+1)+'</th>').join('')+'</tr>';
+ $('paBenefitRows').closest('table').querySelector('thead').innerHTML=header;
+ $('paPremiumRows').closest('table').querySelector('thead').innerHTML=header;
+ if(error){
+  $('paQuoteStats').innerHTML='';
+  $('paBenefitRows').innerHTML='';
+  $('paPremiumRows').innerHTML='';
+  $('paProductNotes').textContent='Enter an eligible age to view all plan tiers.';
+  paCurrentQuote=null;return;
  }
- const frequency={'annual':'Annual','semi':'Semi-annual','monthly':'Monthly'}[$('paMode').value];
- const payCount={'annual':1,'semi':2,'monthly':12}[$('paMode').value];
- $('paQuoteStats').innerHTML=[['Premium per '+frequency.toLowerCase()+' payment',paMoney(total)],['Annualised payments (illustrative)',paMoney(total*payCount)],['Basic plan','Plan '+base]].map(([k,v])=>'<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>').join('');
- $('paBenefitRows').innerHTML=rows.map(b=>'<tr><td>'+proposalSafe(b.name)+'</td><td>'+proposalSafe(b.limit)+'</td></tr>').join('');
- $('paPremiumRows').innerHTML=premiumLines.map(p=>'<tr><td>'+proposalSafe(p.label)+'</td><td>Plan '+p.tier+'</td><td>'+paMoney(p.amount)+'</td></tr>').join('')+'<tr><th>Total '+frequency.toLowerCase()+' payment</th><th></th><th>'+paMoney(total)+'</th></tr>';
- $('paProductNotes').textContent=notes.join(' ')+' Premium rates are from the July 2024 product summaries; current insurer premium and underwriting acceptance must be confirmed.';
- paCurrentQuote=invalid?null:{product:star?'AIA Star Protector Plus':'AIA Solitaire PA (II)',plan:base,age,frequency,payment:total,annualised:total*payCount,occupation:star?'Not applicable':$('paOccupation').value,discount:star&&$('paStarDiscount').checked,benefits:rows,premiumLines,notes:notes.join(' ')};
+ const frequency={annual:'annual',semi:'semi-annual',monthly:'monthly'}[$('paMode').value];
+ const paymentCount={annual:1,semi:2,monthly:12}[$('paMode').value];
+ const line=(name,values,isMoney=false)=>'<tr><td>'+proposalSafe(name)+'</td>'+values.map(value=>'<td>'+proposalSafe(isMoney?paMoney(value):value)+'</td>').join('')+'</tr>';
+ const benefit=(item)=>line(item[0],item[1].map(v=>v===0?'Not included':paBenefitMoney(v)+(item[2]||'')));
+ const section=(name)=>'<tr class="pa-group"><th colspan="'+(count+1)+'">'+proposalSafe(name)+'</th></tr>';
+ const basicRates=star?PA_STAR_RATES.basic.standard[mode]:PA_SOL_RATES[age>=66?'older':'young'][occup].basic[mode];
+ const benefitGroups=[],premiumGroups=[];
+ if(star){
+  benefitGroups.push(section('Basic benefits'));
+  PA_STAR_BENEFITS.forEach(b=>benefitGroups.push(benefit(b)));
+  benefitGroups.push(line('Payor benefit',Array(count).fill('Included; subject to policy terms')));
+  benefitGroups.push(line('Renewal bonus',Array(count).fill('5% per renewal, maximum 5 renewals')));
+  benefitGroups.push(section('Optional Child Critical Illnesses Benefit'));
+  benefitGroups.push(line('Available sums insured',['S$30,000 / S$50,000 / S$100,000',...Array(count-1).fill('Same 3 options')]));
+  const dis=PA_STAR_RATES.basic.discounted[mode];
+  premiumGroups.push(section('Basic plan premiums'));
+  premiumGroups.push(line('Standard '+frequency+' premium',basicRates,true));
+  premiumGroups.push(line('Discounted '+frequency+' premium (eligible policyholders only)',dis,true));
+  premiumGroups.push(section('Optional Child Critical Illness premiums — separate from basic plan'));
+  premiumGroups.push('<tr><td>Optional CI cover</td><td colspan="'+count+'">S$30,000 / S$50,000 / S$100,000 (choose independently of the basic plan)</td></tr>');
+  const ciStd=PA_STAR_RATES.ci.standard[mode],ciDis=PA_STAR_RATES.ci.discounted[mode];
+  premiumGroups.push('<tr><td>Standard '+frequency+' CI premium</td>'+ciStd.map(x=>'<td>'+paMoney(x)+'</td>').join('')+'</tr>');
+  premiumGroups.push('<tr><td>Discounted '+frequency+' CI premium</td>'+ciDis.map(x=>'<td>'+paMoney(x)+'</td>').join('')+'</tr>');
+  $('paProductNotes').textContent='Standard and qualifying discounted rates are shown separately; the optional CI columns correspond to S$30,000, S$50,000 and S$100,000 cover, not the basic plan number. Discount requires qualifying Solitaire PA ownership. Annualised premium estimates are not shown because payment frequencies have separate published rates. Rates include 9% GST and are from July 2024; verify with AIA.';
+ }else{
+  const rates=PA_SOL_RATES[age>=66?'older':'young'][occup];
+  benefitGroups.push(section('Basic benefits'));
+  PA_SOL_BASIC.forEach(b=>benefitGroups.push(benefit(b)));
+  benefitGroups.push(line('Renewal bonus',Array(count).fill('5% per renewal, up to 30%; conditions apply')));
+  premiumGroups.push(section('Basic plan premiums'));
+  premiumGroups.push(line('Basic '+frequency+' premium',basicRates,true));
+  for(const [key,label] of [['lifestyle','Lifestyle Maintenance Benefits Group'],['hospital','Accidental Hospitalisation Benefits Group'],['disability','Monthly Disability Care Benefit']]){
+   benefitGroups.push(section('Optional — '+label));
+   PA_SOL_OPTIONAL[key].forEach(b=>benefitGroups.push(benefit(b)));
+   premiumGroups.push(line('Optional '+label+' ('+frequency+')',rates[key][mode],true));
+  }
+  $('paProductNotes').textContent='Optional benefits are priced separately, not included in the basic premium. An optional plan tier must not exceed the chosen basic tier. From renewal at age 75, specified basic benefit limits are reduced by 50% and optional benefits terminate. July 2024 premiums include 9% GST; verify current rates and eligibility with AIA.';
+ }
+ $('paBenefitRows').innerHTML=benefitGroups.join('');
+ $('paPremiumRows').innerHTML=premiumGroups.join('');
+ $('paQuoteStats').innerHTML='<div class="stat"><div class="k">Available basic plans</div><div class="v">'+count+'</div></div><div class="stat"><div class="k">Premium frequency</div><div class="v">'+proposalSafe(frequency)+'</div></div><div class="stat"><div class="k">Age last birthday</div><div class="v">'+age+'</div></div>';
+ paCurrentQuote={product:star?'AIA Star Protector Plus':'AIA Solitaire PA (II)',age,frequency,occupation:star?'Not applicable':occup,allPlans:true,planCount:count,
+  benefitTable:[...$('paBenefitRows').querySelectorAll('tr')].map(tr=>[...tr.cells].map(c=>c.textContent)),
+  premiumTable:[...$('paPremiumRows').querySelectorAll('tr')].map(tr=>[...tr.cells].map(c=>c.textContent)),
+  notes:$('paProductNotes').textContent};
 }
 for(const id of ['paAge','paPlan','paMode','paOccupation','paLifestyle','paLifestylePlan','paHospital','paHospitalPlan','paDisability','paDisabilityPlan','paStarDiscount','paStarCI','paStarCITier']){
  $(id).addEventListener('change',()=>{if(id==='paPlan')paPopulateTiers();renderAccidentQuote()});
